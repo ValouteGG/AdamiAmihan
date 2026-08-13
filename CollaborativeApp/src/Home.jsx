@@ -1,6 +1,7 @@
 import './styles/home.css'
 import logo from './assets/logo.svg'
 import hero from './assets/hero-student.svg'
+import ThemeToggle from './components/ThemeToggle'
 
 function Home() {
   return (
@@ -17,6 +18,7 @@ function Home() {
           <a href="#/features">Features</a>
           <a href="#/features">How it works</a>
           <a href="#/about">About</a>
+          <ThemeToggle />
           <a href="#/login" className="btn btn-ghost btn-sm">Sign In</a>
           <a href="#/signup" className="btn btn-primary btn-sm">Sign Up</a>
         </nav>

@@ -6,6 +6,19 @@ import About from '../pages/About'
 import Features from '../pages/Features'
 import Login from '../pages/Login'
 import Signup from '../pages/Signup'
+import ForgotPassword from '../pages/ForgotPassword'
+import Profile from '../pages/Profile'
+import Settings from '../pages/Settings'
+import RoomDashboard from '../pages/RoomDashboard'
+import Notifications from '../pages/Notifications'
+import Help from '../pages/Help'
+import Dashboard from '../pages/Dashboard'
+import Search from '../pages/Search'
+import Messages from '../pages/Messages'
+import Calendar from '../pages/Calendar'
+import Whiteboard from '../pages/Whiteboard'
+import Timer from '../pages/Timer'
+import Friends from '../pages/Friends'
 
 function getPath() {
   const hash = window.location.hash || '#/'
@@ -28,6 +41,19 @@ export default function HashRouter() {
   if (path.startsWith('/features')) return <Features />
   if (path.startsWith('/login')) return <Login />
   if (path.startsWith('/signup')) return <Signup />
+  if (path.startsWith('/forgot-password')) return <ForgotPassword />
+  if (path.startsWith('/profile')) return <Profile />
+  if (path.startsWith('/settings')) return <Settings />
+  if (path.startsWith('/room')) return <RoomDashboard />
+  if (path.startsWith('/notifications')) return <Notifications />
+  if (path.startsWith('/help')) return <Help />
+  if (path.startsWith('/dashboard')) return <Dashboard />
+  if (path.startsWith('/search')) return <Search />
+  if (path.startsWith('/messages')) return <Messages />
+  if (path.startsWith('/calendar')) return <Calendar />
+  if (path.startsWith('/whiteboard')) return <Whiteboard />
+  if (path.startsWith('/timer')) return <Timer />
+  if (path.startsWith('/friends')) return <Friends />
 
   return (
     <div style={{padding:40}}>
