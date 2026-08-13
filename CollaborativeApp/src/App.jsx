@@ -1,8 +1,8 @@
-import Home from './Home'
 import './App.css'
+import HashRouter from './router/HashRouter'
 
 function App() {
-  return <Home />
+  return <HashRouter />
 }
 
 export default App

@@ -14,9 +14,9 @@ function Home() {
           </div>
         </div>
         <nav className="main-nav">
-          <a href="#features">Features</a>
-          <a href="#how">How it works</a>
-          <a href="#about">About</a>
+          <a href="#/features">Features</a>
+          <a href="#/features">How it works</a>
+          <a href="#/about">About</a>
         </nav>
       </header>
 
@@ -26,8 +26,8 @@ function Home() {
             <h2>Make group study effortless</h2>
             <p className="lead">Join classmates in live study rooms, share notes, plan assignments, and level up with friendly challenges.</p>
             <div className="cta-row">
-              <button className="btn primary">Create a study room</button>
-              <button className="btn ghost">Browse public rooms</button>
+              <a href="#/create" className="btn primary">Create a study room</a>
+              <a href="#/browse" className="btn ghost">Browse public rooms</a>
             </div>
             <div className="trust">
               <span className="badge">Free for students</span>
