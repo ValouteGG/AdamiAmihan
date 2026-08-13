@@ -91,47 +91,45 @@ export default function Signup() {
     setIsLoading(true)
 
     try {
-      // ============================================
-      // BACKEND INTEGRATION PLACEHOLDER
-      // ============================================
-      // Replace this setTimeout with your actual API call
-      // Example:
-      // const response = await fetch('/api/auth/signup', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     firstName: formData.firstName,
-      //     lastName: formData.lastName,
-      //     email: formData.email,
-      //     password: formData.password
-      //   })
-      // })
-      // const data = await response.json()
-      // if (response.ok) {
-      //     // Handle successful signup
-      //     console.log('Signup successful:', data)
-      //     // Redirect to login or dashboard
-      //     window.location.hash = '#/login'
-      // } else {
-      //     setError(data.message || 'Signup failed')
-      // }
+      console.log('Attempting signup with:', { email: formData.email, firstName: formData.firstName })
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      // For demo purposes, log the user in with mock data
+      // Call backend API for signup
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4002'
+      const response = await fetch(`${apiUrl}/api/auth/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+        }),
+      })
+
+      console.log('Backend response status:', response.status)
+      const data = await response.json()
+      console.log('Backend response data:', data)
+
+      if (!response.ok) {
+        setError(data.message || data.error || 'Signup failed')
+        return
+      }
+
+      // If successful, log the user in with the returned user data
       const userData = {
-        id: 1,
-        email: formData.email,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+        id: data.user.id,
+        email: data.user.email,
+        firstName: data.user.firstName || formData.firstName,
+        lastName: data.user.lastName || formData.lastName,
         avatar: formData.firstName[0]
       }
       login(userData)
-      
+
       // Redirect to dashboard
       window.location.hash = '#/dashboard'
-      
+
     } catch (err) {
       setError('An error occurred. Please try again.')
       console.error('Signup error:', err)
@@ -143,11 +141,7 @@ export default function Signup() {
   // Handle social signup (placeholder)
   const handleSocialSignup = (provider) => {
     console.log(`${provider} signup clicked`)
-    // ============================================
-    // BACKEND INTEGRATION PLACEHOLDER
-    // ============================================
-    // Implement OAuth/social signup logic here
-    // Example: window.location.href = `/api/auth/${provider}`
+    // TODO: Implement OAuth/social signup logic here
   }
 
   return (

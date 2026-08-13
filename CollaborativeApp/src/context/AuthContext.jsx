@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { supabase } from '../config/supabase'
 
 const AuthContext = createContext()
 
@@ -7,26 +8,67 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
 
   useEffect(() => {
-    // Check if user is logged in from localStorage
-    const storedAuth = localStorage.getItem('isAuthenticated')
-    const storedUser = localStorage.getItem('user')
-    
-    if (storedAuth === 'true' && storedUser) {
-      setIsAuthenticated(true)
-      setUser(JSON.parse(storedUser))
+    // Check for existing Supabase session on app load
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (session) {
+          const userData = {
+            id: session.user.id,
+            email: session.user.email,
+            firstName: session.user.user_metadata?.first_name || '',
+            lastName: session.user.user_metadata?.last_name || '',
+            avatar: session.user.user_metadata?.first_name?.[0] || session.user.email[0]
+          }
+          setUser(userData)
+          setIsAuthenticated(true)
+          localStorage.setItem('isAuthenticated', 'true')
+          localStorage.setItem('user', JSON.stringify(userData))
+        }
+      } catch (error) {
+        console.error('Error checking session:', error)
+      }
     }
+
+    checkSession()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        const userData = {
+          id: session.user.id,
+          email: session.user.email,
+          firstName: session.user.user_metadata?.first_name || '',
+          lastName: session.user.user_metadata?.last_name || '',
+          avatar: session.user.user_metadata?.first_name?.[0] || session.user.email[0]
+        }
+        setUser(userData)
+        setIsAuthenticated(true)
+        localStorage.setItem('isAuthenticated', 'true')
+        localStorage.setItem('user', JSON.stringify(userData))
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setIsAuthenticated(false)
+        localStorage.removeItem('isAuthenticated')
+        localStorage.removeItem('user')
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   const login = (userData) => {
-    setIsAuthenticated(true)
     setUser(userData)
+    setIsAuthenticated(true)
     localStorage.setItem('isAuthenticated', 'true')
     localStorage.setItem('user', JSON.stringify(userData))
   }
 
-  const logout = () => {
-    setIsAuthenticated(false)
+  const logout = async () => {
+    await supabase.auth.signOut()
     setUser(null)
+    setIsAuthenticated(false)
     localStorage.removeItem('isAuthenticated')
     localStorage.removeItem('user')
     window.location.hash = '#/login'
