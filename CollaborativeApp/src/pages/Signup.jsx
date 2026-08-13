@@ -39,7 +39,7 @@ export default function Signup() {
   // Calculate password strength
   const calculatePasswordStrength = (password) => {
     let strength = 0
-    if (password.length >= 8) strength++
+    if (password.length >= 6) strength++
     if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++
     if (password.match(/\d/)) strength++
     if (password.match(/[^a-zA-Z\d]/)) strength++
@@ -73,8 +73,8 @@ export default function Signup() {
       return
     }
 
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long')
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long')
       return
     }
 
@@ -113,7 +113,16 @@ export default function Signup() {
       console.log('Backend response data:', data)
 
       if (!response.ok) {
-        setError(data.message || data.error || 'Signup failed')
+        // Handle specific error cases
+        if (data.error === 'User already registered') {
+          setError('This email is already registered. Please log in instead.')
+        } else if (data.error === 'Invalid email format') {
+          setError('Please provide a valid email address.')
+        } else if (data.error === 'Password too weak') {
+          setError('Password must be at least 6 characters long.')
+        } else {
+          setError(data.message || data.error || 'Signup failed. Please try again.')
+        }
         return
       }
 
@@ -264,7 +273,7 @@ export default function Signup() {
                 </div>
               )}
               <div className="auth-hint">
-                Must be at least 8 characters with a mix of letters, numbers, and symbols
+                Must be at least 6 characters with a mix of letters, numbers, and symbols
               </div>
             </div>
 
