@@ -4,6 +4,8 @@ import CreateRoom from '../pages/CreateRoom'
 import BrowseRooms from '../pages/BrowseRooms'
 import About from '../pages/About'
 import Features from '../pages/Features'
+import Login from '../pages/Login'
+import Signup from '../pages/Signup'
 
 function getPath() {
   const hash = window.location.hash || '#/'
@@ -24,6 +26,8 @@ export default function HashRouter() {
   if (path.startsWith('/browse')) return <BrowseRooms />
   if (path.startsWith('/about')) return <About />
   if (path.startsWith('/features')) return <Features />
+  if (path.startsWith('/login')) return <Login />
+  if (path.startsWith('/signup')) return <Signup />
 
   return (
     <div style={{padding:40}}>

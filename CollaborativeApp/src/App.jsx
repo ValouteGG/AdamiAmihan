@@ -1,4 +1,3 @@
-import './App.css'
 import HashRouter from './router/HashRouter'
 
 function App() {
