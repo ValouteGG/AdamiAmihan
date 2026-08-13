@@ -37,49 +37,60 @@ const signup = async (req, res) => {
     }
 
     console.log('Attempting Supabase signup...');
+    console.log('Supabase URL being used:', process.env.SUPABASE_URL);
+    console.log('Request payload:', { email, firstName, lastName, passwordLength: password.length });
     
-    // Create user with Supabase
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          first_name: firstName || '',
-          last_name: lastName || '',
+    try {
+      // Create user with Supabase
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName || '',
+            last_name: lastName || '',
+          }
         }
+      });
+
+      console.log('Supabase response:', { data, error });
+
+      if (error) {
+        console.error('Supabase signup error:', error);
+        return res.status(400).json({ 
+          error: error.message,
+          message: 'Failed to create user account'
+        });
       }
-    });
 
-    console.log('Supabase response:', { data, error });
+      if (!data.user) {
+        console.error('No user data returned from Supabase');
+        return res.status(400).json({ 
+          error: 'No user data returned',
+          message: 'Failed to create user account'
+        });
+      }
 
-    if (error) {
-      console.error('Supabase signup error:', error);
-      return res.status(400).json({ 
-        error: error.message,
-        message: 'Failed to create user account'
+      // Return success response
+      res.status(201).json({
+        message: 'User created successfully',
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          firstName: firstName || '',
+          lastName: lastName || '',
+          created_at: data.user.created_at
+        },
+        session: data.session
+      });
+    } catch (supabaseError) {
+      console.error('Supabase API call failed:', supabaseError);
+      return res.status(500).json({ 
+        error: 'Supabase connection error',
+        message: 'Failed to connect to Supabase service',
+        details: supabaseError.message
       });
     }
-
-    if (!data.user) {
-      console.error('No user data returned from Supabase');
-      return res.status(400).json({ 
-        error: 'No user data returned',
-        message: 'Failed to create user account'
-      });
-    }
-
-    // Return success response
-    res.status(201).json({
-      message: 'User created successfully',
-      user: {
-        id: data.user.id,
-        email: data.user.email,
-        firstName: firstName || '',
-        lastName: lastName || '',
-        created_at: data.user.created_at
-      },
-      session: data.session
-    });
 
   } catch (error) {
     console.error('Signup error:', error);

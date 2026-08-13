@@ -8,7 +8,13 @@ app.use(express.json());
 
 // CORS middleware
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:5173');
+  const allowedOrigins = ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'];
+  const origin = req.headers.origin;
+  
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
@@ -21,6 +27,25 @@ app.use((req, res, next) => {
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({status: 'ok', now: Date.now()});
+});
+
+// Test Supabase connection
+app.get('/api/test-supabase', async (req, res) => {
+  try {
+    const supabase = require('./config/supabase');
+    const { data, error } = await supabase.auth.getSession();
+    res.json({ 
+      status: 'supabase_connection_ok', 
+      connection_test: 'successful',
+      data,
+      error 
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'supabase_connection_failed', 
+      error: error.message 
+    });
+  }
 });
 
 // Auth routes
