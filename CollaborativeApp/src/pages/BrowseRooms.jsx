@@ -1,18 +1,67 @@
-import './page.css'
+import '../styles/pages.css'
 
 export default function BrowseRooms(){
+  const rooms = [
+    { id: 1, name: 'Calculus 101 Study Group', subject: 'Mathematics', participants: 8, status: 'active' },
+    { id: 2, name: 'Organic Chemistry Review', subject: 'Science', participants: 3, status: 'active' },
+    { id: 3, name: 'World History Discussion', subject: 'History', participants: 12, status: 'active' },
+    { id: 4, name: 'Literature Analysis', subject: 'Literature', participants: 5, status: 'active' },
+    { id: 5, name: 'Computer Science Algorithms', subject: 'Computer Science', participants: 15, status: 'active' },
+  ]
+
   return (
     <div className="page-root">
-      <div className="page-inner">
-        <h2>Browse public rooms</h2>
-        <p>Discover active study sessions and join public rooms of interest.</p>
-        <ul className="rooms-list">
-          <li className="room">Calculus 101 • 8 participants <button className="btn">Join</button></li>
-          <li className="room">Organic Chem • 3 participants <button className="btn">Join</button></li>
-          <li className="room">History study • 12 participants <button className="btn">Join</button></li>
-        </ul>
-        <a href="#/" className="btn ghost">Back home</a>
+      <header className="page-header">
+        <div className="page-header-brand">
+          <div className="page-header-logo">📚</div>
+          <h1 className="page-header-title">CollaborativeApp</h1>
+        </div>
+        <nav className="page-header-nav">
+          <a href="#/login" className="btn btn-ghost btn-sm">Sign In</a>
+          <a href="#/signup" className="btn btn-primary btn-sm">Sign Up</a>
+          <a href="#/create" className="btn btn-primary btn-sm">Create Room</a>
+          <a href="#/" className="btn btn-ghost btn-sm">Back to Home</a>
+        </nav>
+      </header>
+
+      <div className="page-content">
+        <div className="page-inner">
+          <h1 className="page-title">Browse Public Rooms</h1>
+          <p className="page-subtitle">Discover active study sessions and join public rooms of interest.</p>
+          
+          <div className="rooms-container">
+            <div className="rooms-header">
+              <h2 className="rooms-title">Available Rooms</h2>
+              <span className="rooms-count">{rooms.length} active rooms</span>
+            </div>
+
+            <ul className="rooms-list">
+              {rooms.map(room => (
+                <li key={room.id} className="room-card">
+                  <div className="room-info">
+                    <h3 className="room-name">{room.name}</h3>
+                    <div className="room-details">
+                      <span className="room-subject">{room.subject}</span>
+                      <div className="room-participants">
+                        <span className="room-participants-icon">👥</span>
+                        <span>{room.participants} participants</span>
+                      </div>
+                      <span className="room-status room-status-active">Active now</span>
+                    </div>
+                  </div>
+                  <div className="room-actions">
+                    <button className="btn btn-primary btn-sm">Join Room</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
       </div>
+
+      <footer className="page-footer">
+        <p>© {new Date().getFullYear()} CollaborativeApp — Built for students</p>
+      </footer>
     </div>
   )
 }

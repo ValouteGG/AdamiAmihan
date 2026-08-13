@@ -1,4 +1,4 @@
-import './home.css'
+import './styles/home.css'
 import logo from './assets/logo.svg'
 import hero from './assets/hero-student.svg'
 
@@ -17,6 +17,8 @@ function Home() {
           <a href="#/features">Features</a>
           <a href="#/features">How it works</a>
           <a href="#/about">About</a>
+          <a href="#/login" className="btn btn-ghost btn-sm">Sign In</a>
+          <a href="#/signup" className="btn btn-primary btn-sm">Sign Up</a>
         </nav>
       </header>
 

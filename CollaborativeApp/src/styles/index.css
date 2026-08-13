@@ -1,0 +1,19 @@
+/* Main Styles Import File */
+
+/* Design System - Variables, Typography, Base Styles */
+@import './design-system.css';
+
+/* Global Styles and Utility Classes */
+@import './global.css';
+
+/* Component Styles - Buttons, Forms, Cards, etc. */
+@import './components.css';
+
+/* Home Page Styles */
+@import './home.css';
+
+/* Pages Styles */
+@import './pages.css';
+
+/* Authentication Styles */
+@import './auth.css';
