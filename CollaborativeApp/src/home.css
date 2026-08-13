@@ -1,0 +1,52 @@
+.home-root{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans';color:#0f172a}
+.site-header{display:flex;align-items:center;justify-content:space-between;padding:18px 28px;background:linear-gradient(90deg,#ffffffcc,#f8fafc);backdrop-filter:blur(4px)}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:44px;height:44px;border-radius:8px}
+.title{margin:0;font-size:20px;font-weight:700}
+.tag{font-size:12px;color:#6b7280}
+.main-nav a{margin-left:18px;color:#334155;text-decoration:none;font-weight:600}
+.student-hero{display:flex;gap:28px;align-items:center;justify-content:space-between;padding:48px 40px;background:linear-gradient(135deg,#eef2ff,#fff7ff)}
+.hero-content{max-width:640px}
+.hero-content h2{font-size:34px;margin:0 0 8px;color:#0f172a}
+.lead{margin:0 0 16px;color:#334155;font-size:16px}
+.cta-row{display:flex;gap:12px;margin:14px 0}
+.btn{padding:10px 16px;border-radius:12px;border:1px solid transparent;background:#fff;color:#0f172a;cursor:pointer;box-shadow:0 1px 2px rgba(15,23,42,0.04)}
+.btn.primary{background:linear-gradient(90deg,#6d28d9,#7c3aed);color:#fff;box-shadow:0 8px 24px rgba(124,58,237,0.18);border:none}
+.btn.ghost{background:transparent;border:1px solid rgba(15,23,42,0.06)}
+.trust{margin-top:12px;display:flex;gap:8px;align-items:center}
+.badge{background:#eef2ff;color:#3730a3;padding:6px 10px;border-radius:999px;font-weight:600;font-size:12px}
+.badge.muted{background:#f1f5f9;color:#475569}
+.hero-visual img{width:360px;max-width:42vw;border-radius:12px}
+
+.features{padding:36px 40px}
+.features h3{margin:0 0 12px;font-size:20px}
+.feature-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:16px}
+.feature{padding:18px;border-radius:12px;background:linear-gradient(180deg,#ffffff,#fbfdff);border:1px solid rgba(15,23,42,0.04);transition:transform .18s ease,box-shadow .18s ease}
+.feature:hover{transform:translateY(-6px);box-shadow:0 12px 30px rgba(2,6,23,0.06)}
+.feature h4{margin:0 0 8px}
+.feature p{margin:0;color:#475569}
+
+.how{padding:28px 40px;background:#fff}
+.how h3{margin-bottom:12px}
+.steps{display:flex;gap:16px;flex-wrap:wrap}
+.step{display:flex;gap:12px;align-items:flex-start;flex:1;min-width:200px}
+.step-num{width:44px;height:44px;border-radius:10px;background:linear-gradient(90deg,#6d28d9,#7c3aed);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
+.step h4{margin:0 0 6px}
+.step p{margin:0;color:#475569}
+
+.testimonial{padding:28px 40px}
+.testimonial blockquote{background:linear-gradient(90deg,#f8fafc,#fff);padding:20px;border-radius:12px;border:1px solid rgba(15,23,42,0.03);font-style:italic}
+.testimonial cite{display:block;margin-top:10px;font-weight:700;color:#111827}
+
+.site-footer{display:flex;justify-content:space-between;padding:18px 40px;border-top:1px solid rgba(15,23,42,0.04);color:#64748b}
+
+@media (max-width:900px){
+	.student-hero{flex-direction:column;align-items:flex-start}
+	.hero-visual img{max-width:100%;width:100%}
+	.feature-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+@media (max-width:480px){
+	.feature-grid{grid-template-columns:1fr}
+	.main-nav{display:none}
+}
