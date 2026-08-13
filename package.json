@@ -1,0 +1,11 @@
+{
+  "name": "collabwork",
+  "private": true,
+  "scripts": {
+    "start": "npm --prefix CollaborativeApp run dev",
+    "dev": "npm --prefix CollaborativeApp run dev",
+    "build": "npm --prefix CollaborativeApp run build",
+    "install:app": "npm --prefix CollaborativeApp install",
+    "install:backend": "npm --prefix CollaborativeApp/backend install"
+  }
+}
