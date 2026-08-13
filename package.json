@@ -1,0 +1,13 @@
+{
+  "name": "collabwork",
+  "private": true,
+  "scripts": {
+    "start": "concurrently \"npm --prefix CollaborativeApp run dev\" \"npm --prefix CollaborativeApp/backend run start\"",
+    "dev": "concurrently \"npm --prefix CollaborativeApp run dev\" \"npm --prefix CollaborativeApp/backend run start\"",
+    "frontend": "npm --prefix CollaborativeApp run dev",
+    "backend": "npm --prefix CollaborativeApp/backend run start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
