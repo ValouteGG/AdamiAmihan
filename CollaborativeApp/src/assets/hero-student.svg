@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 420">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1">
+      <stop offset="0" stop-color="#a78bfa" />
+      <stop offset="1" stop-color="#60a5fa" />
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" rx="20" fill="#ffffff" />
+  <g transform="translate(40,40)">
+    <rect x="0" y="0" width="520" height="340" rx="16" fill="#f8fafc" stroke="#eef2ff" />
+    <circle cx="120" cy="120" r="60" fill="url(#g)" opacity="0.95" />
+    <rect x="220" y="70" width="220" height="36" rx="8" fill="#fff" />
+    <rect x="220" y="120" width="160" height="28" rx="8" fill="#fff" />
+    <rect x="220" y="160" width="120" height="28" rx="8" fill="#fff" />
+    <g transform="translate(80,220)">
+      <rect x="0" y="0" width="420" height="80" rx="8" fill="#eef2ff" />
+      <text x="18" y="46" font-family="Arial" font-size="20" fill="#374151">Group notes • Live cursors • Voice chat</text>
+    </g>
+  </g>
+</svg>
