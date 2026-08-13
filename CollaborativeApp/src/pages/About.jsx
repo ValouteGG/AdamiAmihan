@@ -1,16 +1,18 @@
 import '../styles/pages.css'
+import ThemeToggle from '../components/ThemeToggle'
 
 export default function About(){
   return (
     <div className="page-root">
       <header className="page-header">
         <div className="page-header-brand">
-          <div className="page-header-logo">📚</div>
-          <h1 className="page-header-title">CollaborativeApp</h1>
+          <a href="#/" className="page-header-logo">📚</a>
+          <a href="#/" className="page-header-title">CollaborativeApp</a>
         </div>
         <nav className="page-header-nav">
           <a href="#/login" className="btn btn-ghost btn-sm">Sign In</a>
           <a href="#/signup" className="btn btn-primary btn-sm">Sign Up</a>
+          <ThemeToggle />
           <a href="#/" className="btn btn-ghost btn-sm">Back to Home</a>
         </nav>
       </header>

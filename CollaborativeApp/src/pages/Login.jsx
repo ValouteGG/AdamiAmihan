@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import '../styles/auth.css'
+import ThemeToggle from '../components/ThemeToggle'
+import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
+  const { login } = useAuth()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -73,12 +76,18 @@ export default function Login() {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500))
       
-      // For demo purposes, just log the data
-      console.log('Login attempt:', formData)
-      alert('Login functionality ready for backend integration!')
+      // For demo purposes, log the user in with mock data
+      const userData = {
+        id: 1,
+        email: formData.email,
+        firstName: 'Demo',
+        lastName: 'User',
+        avatar: 'D'
+      }
+      login(userData)
       
-      // Reset form after successful submission
-      setFormData({ email: '', password: '', rememberMe: false })
+      // Redirect to dashboard
+      window.location.hash = '#/dashboard'
       
     } catch (err) {
       setError('An error occurred. Please try again.')
@@ -100,10 +109,13 @@ export default function Login() {
 
   return (
     <div className="auth-root">
+      <div className="auth-theme-toggle">
+        <ThemeToggle />
+      </div>
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-header">
-            <div className="auth-logo">📚</div>
+            <a href="#/" className="auth-logo">📚</a>
             <h1 className="auth-title">Welcome Back</h1>
             <p className="auth-subtitle">Sign in to continue your collaborative learning journey</p>
           </div>

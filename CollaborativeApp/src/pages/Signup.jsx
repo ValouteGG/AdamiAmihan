@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import '../styles/auth.css'
+import ThemeToggle from '../components/ThemeToggle'
+import { useAuth } from '../context/AuthContext'
 
 export default function Signup() {
+  const { login } = useAuth()
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -116,23 +119,18 @@ export default function Signup() {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500))
       
-      // For demo purposes, just log the data
-      console.log('Signup attempt:', {
+      // For demo purposes, log the user in with mock data
+      const userData = {
+        id: 1,
+        email: formData.email,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        email: formData.email
-      })
-      alert('Signup functionality ready for backend integration!')
+        avatar: formData.firstName[0]
+      }
+      login(userData)
       
-      // Reset form after successful submission
-      setFormData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        agreeToTerms: false
-      })
+      // Redirect to dashboard
+      window.location.hash = '#/dashboard'
       
     } catch (err) {
       setError('An error occurred. Please try again.')
@@ -154,10 +152,13 @@ export default function Signup() {
 
   return (
     <div className="auth-root">
+      <div className="auth-theme-toggle">
+        <ThemeToggle />
+      </div>
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-header">
-            <div className="auth-logo">📚</div>
+            <a href="#/" className="auth-logo">📚</a>
             <h1 className="auth-title">Create Account</h1>
             <p className="auth-subtitle">Join our collaborative learning community today</p>
           </div>
