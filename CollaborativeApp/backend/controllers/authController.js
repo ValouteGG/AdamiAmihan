@@ -57,6 +57,17 @@ const signup = async (req, res) => {
 
       if (error) {
         console.error('Supabase signup error:', error);
+        
+        // Check if user already exists
+        if (error.message === 'User already registered' || 
+            error.message?.includes('already registered') ||
+            error.message?.includes('already exists')) {
+          return res.status(400).json({ 
+            error: 'User already registered',
+            message: 'This email is already registered. Please log in instead.'
+          });
+        }
+        
         return res.status(400).json({ 
           error: error.message,
           message: 'Failed to create user account'
