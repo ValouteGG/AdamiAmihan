@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
+import { supabase } from '../config/supabase'
 import '../styles/pages.css'
 import ThemeToggle from '../components/ThemeToggle'
 import ProtectedRoute from '../components/ProtectedRoute'
 import webrtcClient from '../utils/webrtc'
+import { useAuth } from '../context/AuthContext'
 
 export default function Messages() {
+  const { user } = useAuth()
   const [activeConversation, setActiveConversation] = useState(null)
   const [message, setMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -23,69 +26,202 @@ export default function Messages() {
   const remoteVideoRef = useRef(null)
   const callTimerRef = useRef(null)
   
-  // Mock conversations data
-  const [conversations] = useState([
-    { 
-      id: 1, 
-      name: 'Alice Johnson', 
-      avatar: 'A', 
-      lastMessage: 'Hey! Are you coming to the study session?', 
-      time: '2 min ago', 
-      unread: 2,
-      online: true 
-    },
-    { 
-      id: 2, 
-      name: 'Bob Smith', 
-      avatar: 'B', 
-      lastMessage: 'Thanks for sharing the notes!', 
-      time: '1 hour ago', 
-      unread: 0,
-      online: false 
-    },
-    { 
-      id: 3, 
-      name: 'Carol Davis', 
-      avatar: 'C', 
-      lastMessage: 'Let me know when you\'re free to discuss the project', 
-      time: '3 hours ago', 
-      unread: 0,
-      online: true 
-    },
-    { 
-      id: 4, 
-      name: 'Study Group Chat', 
-      avatar: '👥', 
-      lastMessage: 'David: I\'ll bring the snacks!', 
-      time: '1 day ago', 
-      unread: 5,
-      online: false,
-      isGroup: true 
-    },
-  ])
+  // Real data from backend
+  const [conversations, setConversations] = useState([])
+  const [messages, setMessages] = useState([])
+  const [conversationsLoading, setConversationsLoading] = useState(true)
+  const [messagesLoading, setMessagesLoading] = useState(false)
+  
+  // Add friend state
+  const [showAddFriend, setShowAddFriend] = useState(false)
+  const [friendEmail, setFriendEmail] = useState('')
+  const [addingFriend, setAddingFriend] = useState(false)
 
-  // Mock messages for active conversation
-  const [messages, setMessages] = useState([
-    { id: 1, sender: 'Alice Johnson', text: 'Hey! How\'s the calculus study going?', time: '10:30 AM', isMine: false },
-    { id: 2, sender: 'You', text: 'Pretty good! Just finished chapter 5', time: '10:32 AM', isMine: true },
-    { id: 3, sender: 'Alice Johnson', text: 'Nice! Are you coming to the study session today?', time: '10:33 AM', isMine: false },
-  ])
+  const handleAddFriend = async () => {
+    if (!friendEmail.trim()) {
+      alert('Please enter an email address')
+      return
+    }
+
+    try {
+      setAddingFriend(true)
+      
+      // Get Supabase session for auth token
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers = {
+        'Content-Type': 'application/json',
+      }
+      
+      // Add auth token if available
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      
+      const response = await fetch('http://localhost:4002/api/friends/add', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ email: friendEmail })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Refresh conversations to get the new conversation
+        const convResponse = await fetch('http://localhost:4002/api/messages/conversations', {
+          headers
+        })
+        const convData = await convResponse.json()
+        
+        if (convResponse.ok) {
+          setConversations(convData.conversations || [])
+          // Auto-select the new conversation
+          const newConv = convData.conversations?.find(c => c.id === data.friend.id)
+          if (newConv) {
+            setActiveConversation(newConv)
+          }
+        }
+        
+        // Reset form
+        setFriendEmail('')
+        setShowAddFriend(false)
+        alert(data.message || 'Friend added successfully!')
+      } else {
+        alert(data.error || 'Failed to add friend')
+      }
+    } catch (error) {
+      console.error('Error adding friend:', error)
+      alert('Failed to add friend')
+    } finally {
+      setAddingFriend(false)
+    }
+  }
+
+  // Fetch conversations from backend
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        setConversationsLoading(true)
+        
+        // Get Supabase session for auth token
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        const headers = {
+          'Content-Type': 'application/json',
+        }
+        
+        // Add auth token if available
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`
+        }
+        
+        const response = await fetch('http://localhost:4002/api/messages/conversations', {
+          headers
+        })
+        const data = await response.json()
+        
+        if (response.ok) {
+          setConversations(data.conversations || [])
+          // Auto-select first conversation if none selected
+          if (!activeConversation && data.conversations?.length > 0) {
+            setActiveConversation(data.conversations[0])
+          }
+        } else {
+          console.error('Failed to fetch conversations:', data.error)
+        }
+      } catch (error) {
+        console.error('Error fetching conversations:', error)
+      } finally {
+        setConversationsLoading(false)
+      }
+    }
+
+    fetchConversations()
+  }, [])
+
+  // Fetch messages when conversation changes
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (!activeConversation) return
+      
+      try {
+        setMessagesLoading(true)
+        
+        // Get Supabase session for auth token
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        const headers = {
+          'Content-Type': 'application/json',
+        }
+        
+        // Add auth token if available
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`
+        }
+        
+        const response = await fetch(`http://localhost:4002/api/messages/${activeConversation.id}`, {
+          headers
+        })
+        const data = await response.json()
+        
+        if (response.ok) {
+          setMessages(data.messages || [])
+        } else {
+          console.error('Failed to fetch messages:', data.error)
+        }
+      } catch (error) {
+        console.error('Error fetching messages:', error)
+      } finally {
+        setMessagesLoading(false)
+      }
+    }
+
+    fetchMessages()
+  }, [activeConversation])
 
   const handleSendMessage = async () => {
     if (!message.trim() || !activeConversation) return
 
-    const newMessage = {
-      id: messages.length + 1,
-      sender: 'You',
-      text: message,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isMine: true
-    }
+    try {
+      setIsLoading(true)
+      
+      // Get Supabase session for auth token
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers = {
+        'Content-Type': 'application/json',
+      }
+      
+      // Add auth token if available
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      
+      const response = await fetch('http://localhost:4002/api/messages', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          conversationId: activeConversation.id,
+          text: message
+        })
+      })
 
-    setMessages(prev => [...prev, newMessage])
-    setMessage('')
-    
-    console.log('Message sent:', newMessage)
+      const data = await response.json()
+
+      if (response.ok) {
+        setMessages(prev => [...prev, data.message])
+        setMessage('')
+        setIsTyping(false)
+      } else {
+        console.error('Failed to send message:', data.error)
+        alert('Failed to send message')
+      }
+    } catch (error) {
+      console.error('Error sending message:', error)
+      alert('Failed to send message')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleKeyPress = (e) => {
@@ -106,8 +242,8 @@ export default function Messages() {
   }
 
   const selectedConversation = activeConversation || conversations[0]
-  const [currentUserId, setCurrentUserId] = useState('user-1')
-  const [selectedUser, setSelectedUser] = useState('user-1')
+  const [currentUserId, setCurrentUserId] = useState(user?.id || 'user-1')
+  const [selectedUser, setSelectedUser] = useState(user?.id || 'user-1')
 
   // Initialize WebRTC client
   useEffect(() => {
@@ -210,8 +346,8 @@ export default function Messages() {
       setIsInCall(true)
       setCallType('audio')
       
-      // Call the selected user from the dropdown
-      const targetUser = selectedUser === 'user-1' ? 'user-2' : 'user-1'
+      // Use conversation ID as target for now (in real app, would use actual user ID)
+      const targetUser = `conv-${selectedConversation.id}`
       console.log(`Calling ${targetUser} from ${currentUserId}`)
       await webrtcClient.startCall(targetUser, 'audio')
     } catch (error) {
@@ -228,8 +364,8 @@ export default function Messages() {
       setIsInCall(true)
       setCallType('video')
       
-      // Call the selected user from the dropdown
-      const targetUser = selectedUser === 'user-1' ? 'user-2' : 'user-1'
+      // Use conversation ID as target for now (in real app, would use actual user ID)
+      const targetUser = `conv-${selectedConversation.id}`
       console.log(`Calling ${targetUser} from ${currentUserId}`)
       await webrtcClient.startCall(targetUser, 'video')
     } catch (error) {
@@ -237,11 +373,6 @@ export default function Messages() {
       setIsInCall(false)
       alert('Failed to start video call. Please check camera/microphone permissions.')
     }
-  }
-
-  const handleUserIdChange = (newUserId) => {
-    setCurrentUserId(newUserId)
-    setSelectedUser(newUserId)
   }
 
   const handleAnswerCall = () => {
@@ -312,33 +443,56 @@ export default function Messages() {
         <div className="messages-sidebar">
           <div className="messages-sidebar-header">
             <h2>Conversations</h2>
-            <button className="btn btn-sm btn-primary">+ New</button>
+            <button 
+              className="btn btn-sm btn-primary" 
+              onClick={() => setShowAddFriend(true)}
+            >
+              + Add Friend
+            </button>
           </div>
           <div className="conversations-list">
-            {conversations.map(conv => (
-              <div
-                key={conv.id}
-                className={`conversation-item ${activeConversation?.id === conv.id ? 'conversation-item-active' : ''}`}
-                onClick={() => setActiveConversation(conv)}
-              >
-                <div className="conversation-avatar">
-                  {conv.avatar}
-                  {conv.online && <span className="conversation-status-online"></span>}
-                </div>
-                <div className="conversation-info">
-                  <div className="conversation-header">
-                    <span className="conversation-name">{conv.name}</span>
-                    <span className="conversation-time">{conv.time}</span>
-                  </div>
-                  <div className="conversation-preview">
-                    <span className="conversation-message">{conv.lastMessage}</span>
-                    {conv.unread > 0 && (
-                      <span className="conversation-unread">{conv.unread}</span>
-                    )}
-                  </div>
-                </div>
+            {conversationsLoading ? (
+              <div className="conversations-loading">
+                <div className="loading-spinner">Loading conversations...</div>
               </div>
-            ))}
+            ) : conversations.length === 0 ? (
+              <div className="conversations-empty">
+                <div className="conversations-empty-icon">💬</div>
+                <h3>No conversations yet</h3>
+                <p>Add friends to start messaging</p>
+                <button 
+                  className="btn btn-primary btn-sm"
+                  onClick={() => setShowAddFriend(true)}
+                >
+                  Add Your First Friend
+                </button>
+              </div>
+            ) : (
+              conversations.map(conv => (
+                <div
+                  key={conv.id}
+                  className={`conversation-item ${activeConversation?.id === conv.id ? 'conversation-item-active' : ''}`}
+                  onClick={() => setActiveConversation(conv)}
+                >
+                  <div className="conversation-avatar">
+                    {conv.isGroup ? '👥' : conv.avatar}
+                    {conv.online && !conv.isGroup && <span className="conversation-status-online"></span>}
+                  </div>
+                  <div className="conversation-info">
+                    <div className="conversation-header">
+                      <span className="conversation-name">{conv.name}</span>
+                      <span className="conversation-time">{conv.time}</span>
+                    </div>
+                    <div className="conversation-preview">
+                      <span className="conversation-message">{conv.lastMessage}</span>
+                      {conv.unread > 0 && (
+                        <span className="conversation-unread">{conv.unread}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -355,7 +509,7 @@ export default function Messages() {
                   <div>
                     <div className="messages-chat-name">{selectedConversation.name}</div>
                     <div className="messages-chat-status">
-                      {selectedConversation.online ? 'Online' : 'Offline'}
+                      {selectedConversation.isGroup ? 'Group Chat' : (selectedConversation.online ? 'Online' : 'Offline')}
                     </div>
                   </div>
                 </div>
@@ -364,37 +518,30 @@ export default function Messages() {
                   <button className="btn btn-sm btn-ghost" onClick={handleVideoCall} title="Video Call">📹</button>
                   <button className="btn btn-sm btn-ghost" title="More options">⋮</button>
                 </div>
-                <div className="user-id-debug">
-                  <div className="user-selector">
-                    <label>I am:</label>
-                    <select 
-                      value={currentUserId} 
-                      onChange={(e) => handleUserIdChange(e.target.value)}
-                      className="user-select"
-                    >
-                      <option value="user-1">User 1</option>
-                      <option value="user-2">User 2</option>
-                    </select>
-                  </div>
-                  <div className="user-display">
-                    Current User ID: <strong>{currentUserId}</strong>
-                  </div>
-                  <div className="user-info">
-                    Will call: <strong>{currentUserId === 'user-1' ? 'user-2' : 'user-1'}</strong>
-                  </div>
-                </div>
               </div>
 
               <div className="messages-chat-messages">
-                {messages.map(msg => (
-                  <div key={msg.id} className={`chat-message ${msg.isMine ? 'chat-message-mine' : ''}`}>
-                    <div className="chat-message-header">
-                      <span className="chat-message-sender">{msg.sender}</span>
-                      <span className="chat-message-time">{msg.time}</span>
-                    </div>
-                    <div className="chat-message-text">{msg.text}</div>
+                {messagesLoading ? (
+                  <div className="messages-loading">
+                    <div className="loading-spinner">Loading messages...</div>
                   </div>
-                ))}
+                ) : messages.length === 0 ? (
+                  <div className="messages-empty-messages">
+                    <div className="messages-empty-icon">💬</div>
+                    <h3>No messages yet</h3>
+                    <p>Start the conversation by sending a message</p>
+                  </div>
+                ) : (
+                  messages.map(msg => (
+                    <div key={msg.id} className={`chat-message ${msg.isMine ? 'chat-message-mine' : ''}`}>
+                      <div className="chat-message-header">
+                        <span className="chat-message-sender">{msg.sender}</span>
+                        <span className="chat-message-time">{msg.time}</span>
+                      </div>
+                      <div className="chat-message-text">{msg.text}</div>
+                    </div>
+                  ))
+                )}
                 {isTyping && (
                   <div className="chat-message typing-indicator">
                     <div className="typing-dots">
@@ -416,14 +563,15 @@ export default function Messages() {
                     onChange={handleInputChange}
                     onKeyPress={handleKeyPress}
                     rows={1}
+                    disabled={isLoading}
                   />
                   <button className="btn btn-sm btn-ghost">😊</button>
                   <button
                     className="btn btn-primary"
                     onClick={handleSendMessage}
-                    disabled={!message.trim()}
+                    disabled={!message.trim() || isLoading}
                   >
-                    Send
+                    {isLoading ? 'Sending...' : 'Send'}
                   </button>
                 </div>
               </div>
@@ -520,6 +668,61 @@ export default function Messages() {
                 title="End call"
               >
                 📞
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Friend Modal */}
+      {showAddFriend && (
+        <div className="modal-overlay" onClick={() => setShowAddFriend(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Add Friend</h2>
+              <button 
+                className="btn btn-sm btn-ghost" 
+                onClick={() => setShowAddFriend(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="form-label">
+                <span className="form-label-text">Friend's Email</span>
+                <input
+                  type="email"
+                  className="form-input"
+                  placeholder="friend@example.com"
+                  value={friendEmail}
+                  onChange={(e) => setFriendEmail(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleAddFriend()
+                    }
+                  }}
+                  disabled={addingFriend}
+                />
+              </div>
+              <p className="form-help-text">
+                Enter the email address of a registered user to add them as a friend. They'll need to accept your friend request before you can message them.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="btn btn-ghost" 
+                onClick={() => setShowAddFriend(false)}
+                disabled={addingFriend}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-primary" 
+                onClick={handleAddFriend}
+                disabled={addingFriend || !friendEmail.trim()}
+              >
+                {addingFriend ? 'Adding...' : 'Add Friend'}
               </button>
             </div>
           </div>
