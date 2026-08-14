@@ -19,10 +19,13 @@ import Calendar from '../pages/Calendar'
 import Whiteboard from '../pages/Whiteboard'
 import Timer from '../pages/Timer'
 import Friends from '../pages/Friends'
+import AuthCallback from '../pages/AuthCallback'
 
 function getPath() {
   const hash = window.location.hash || '#/'
-  return hash.replace(/^#/, '')
+  // Remove query parameters from the path
+  const pathWithoutQuery = hash.replace(/^#/, '').split('?')[0]
+  return pathWithoutQuery
 }
 
 export default function HashRouter() {
@@ -42,6 +45,7 @@ export default function HashRouter() {
   if (path.startsWith('/login')) return <Login />
   if (path.startsWith('/signup')) return <Signup />
   if (path.startsWith('/forgot-password')) return <ForgotPassword />
+  if (path.startsWith('/auth/callback') || path === '/auth/callback') return <AuthCallback />
   if (path.startsWith('/profile')) return <Profile />
   if (path.startsWith('/settings')) return <Settings />
   if (path.startsWith('/room')) return <RoomDashboard />

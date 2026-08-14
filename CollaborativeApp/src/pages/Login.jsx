@@ -2,9 +2,10 @@ import { useState } from 'react'
 import '../styles/auth.css'
 import ThemeToggle from '../components/ThemeToggle'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../config/supabase'
 
 export default function Login() {
-  const { login } = useAuth()
+  const { loginWithUserData } = useAuth()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -49,62 +50,79 @@ export default function Login() {
     setIsLoading(true)
 
     try {
-      // ============================================
-      // BACKEND INTEGRATION PLACEHOLDER
-      // ============================================
-      // Replace this setTimeout with your actual API call
-      // Example:
-      // const response = await fetch('/api/auth/login', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     email: formData.email,
-      //     password: formData.password,
-      //     rememberMe: formData.rememberMe
-      //   })
-      // })
-      // const data = await response.json()
-      // if (response.ok) {
-      //     // Handle successful login
-      //     console.log('Login successful:', data)
-      //     // Redirect to dashboard or home
-      //     window.location.hash = '#/'
-      // } else {
-      //     setError(data.message || 'Login failed')
-      // }
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4005'
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      // For demo purposes, log the user in with mock data
-      const userData = {
-        id: 1,
-        email: formData.email,
-        firstName: 'Demo',
-        lastName: 'User',
-        avatar: 'D'
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Handle successful login
+        console.log('Login successful:', data)
+        
+        // Create user data for the auth context
+        const userData = {
+          id: data.user.id,
+          email: data.user.email,
+          firstName: data.user.firstName || '',
+          lastName: data.user.lastName || '',
+          avatar: (data.user.firstName || data.user.email)[0].toUpperCase()
+        }
+        
+        loginWithUserData(userData)
+        
+        // Redirect to dashboard
+        window.location.hash = '#/dashboard'
+      } else {
+        setError(data.message || 'Login failed')
       }
-      login(userData)
-      
-      // Redirect to dashboard
-      window.location.hash = '#/dashboard'
       
     } catch (err) {
-      setError('An error occurred. Please try again.')
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        setError('Unable to connect to server. Please check if the backend is running.')
+      } else {
+        setError('An error occurred. Please try again.')
+      }
       console.error('Login error:', err)
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Handle social login (placeholder)
-  const handleSocialLogin = (provider) => {
-    console.log(`${provider} login clicked`)
-    // ============================================
-    // BACKEND INTEGRATION PLACEHOLDER
-    // ============================================
-    // Implement OAuth/social login logic here
-    // Example: window.location.href = `/api/auth/${provider}`
+  // Handle social login
+  const handleSocialLogin = async (provider) => {
+    try {
+      if (provider === 'google') {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/#/auth/callback`
+          }
+        })
+
+        if (error) {
+          setError('Google login failed. Please try again.')
+          console.error('Google OAuth error:', error)
+          return
+        }
+
+        // The user will be redirected to Google's OAuth page
+        window.location.href = data.url
+      } else if (provider === 'github') {
+        // For GitHub, we'll use the same pattern (can be implemented similarly)
+        setError('GitHub login is not yet implemented')
+      }
+    } catch (err) {
+      setError(`${provider} login failed. Please try again.`)
+      console.error(`${provider} login error:`, err)
+    }
   }
 
   return (

@@ -58,7 +58,39 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const login = (userData) => {
+  const login = async (email, password) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) {
+        throw error
+      }
+
+      const userData = {
+        id: data.user.id,
+        email: data.user.email,
+        firstName: data.user.user_metadata?.first_name || '',
+        lastName: data.user.user_metadata?.last_name || '',
+        avatar: data.user.user_metadata?.first_name?.[0] || data.user.email[0]
+      }
+
+      setUser(userData)
+      setIsAuthenticated(true)
+      localStorage.setItem('isAuthenticated', 'true')
+      localStorage.setItem('user', JSON.stringify(userData))
+      
+      return { success: true, user: userData }
+    } catch (error) {
+      console.error('Login error:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  // Keep the old login method for backward compatibility (used by Login.jsx with userData)
+  const loginWithUserData = (userData) => {
     setUser(userData)
     setIsAuthenticated(true)
     localStorage.setItem('isAuthenticated', 'true')
@@ -75,7 +107,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, loginWithUserData, logout }}>
       {children}
     </AuthContext.Provider>
   )

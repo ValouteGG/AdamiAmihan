@@ -2,9 +2,10 @@ import { useState } from 'react'
 import '../styles/auth.css'
 import ThemeToggle from '../components/ThemeToggle'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../config/supabase'
 
 export default function Signup() {
-  const { login } = useAuth()
+  const { loginWithUserData } = useAuth()
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -94,7 +95,7 @@ export default function Signup() {
       console.log('Attempting signup with:', { email: formData.email, firstName: formData.firstName })
       
       // Call backend API for signup
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4002'
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4005'
       const response = await fetch(`${apiUrl}/api/auth/signup`, {
         method: 'POST',
         headers: {
@@ -134,23 +135,59 @@ export default function Signup() {
         lastName: data.user.lastName || formData.lastName,
         avatar: formData.firstName[0]
       }
-      login(userData)
+      loginWithUserData(userData)
 
       // Redirect to dashboard
       window.location.hash = '#/dashboard'
 
     } catch (err) {
-      setError('An error occurred. Please try again.')
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        setError('Unable to connect to server. Please check if the backend is running.')
+      } else {
+        setError('An error occurred. Please try again.')
+      }
       console.error('Signup error:', err)
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Handle social signup (placeholder)
-  const handleSocialSignup = (provider) => {
-    console.log(`${provider} signup clicked`)
-    // TODO: Implement OAuth/social signup logic here
+  // Handle social signup
+  const handleSocialSignup = async (provider) => {
+    try {
+      if (provider === 'google') {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4005'
+        console.log('Attempting Google signup with API URL:', apiUrl)
+        
+        const response = await fetch(`${apiUrl}/api/auth/google/url`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+
+        console.log('Google OAuth response status:', response.status)
+        
+        const data = await response.json()
+        console.log('Google OAuth response data:', data)
+
+        if (!response.ok) {
+          setError('Google signup failed. Please try again.')
+          console.error('Google OAuth error:', data.error)
+          return
+        }
+
+        // The user will be redirected to Google's OAuth page
+        console.log('Redirecting to Google OAuth URL:', data.url)
+        window.location.href = data.url
+      } else if (provider === 'github') {
+        // For GitHub, we'll use the same pattern (can be implemented similarly)
+        setError('GitHub signup is not yet implemented')
+      }
+    } catch (err) {
+      setError(`${provider} signup failed. Please try again.`)
+      console.error(`${provider} signup error:`, err)
+    }
   }
 
   return (
