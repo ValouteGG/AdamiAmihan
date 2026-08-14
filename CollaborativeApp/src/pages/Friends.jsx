@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from '../config/supabase'
 import '../styles/pages.css'
 import ThemeToggle from '../components/ThemeToggle'
 import ProtectedRoute from '../components/ProtectedRoute'
@@ -7,44 +8,49 @@ export default function Friends() {
   const [activeTab, setActiveTab] = useState('friends') // 'friends', 'requests', 'discover'
   const [searchQuery, setSearchQuery] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [searchResults, setSearchResults] = useState([])
+  const [isSearching, setIsSearching] = useState(false)
   
-  // Mock data
-  const [friends] = useState([
-    { id: 1, name: 'Alice Johnson', avatar: 'A', subjects: ['Mathematics', 'Physics'], mutualFriends: 5, online: true },
-    { id: 2, name: 'Bob Smith', avatar: 'B', subjects: ['Computer Science'], mutualFriends: 3, online: false },
-    { id: 3, name: 'Carol Davis', avatar: 'C', subjects: ['Chemistry', 'Biology'], mutualFriends: 2, online: true },
-    { id: 4, name: 'David Lee', avatar: 'D', subjects: ['Mathematics'], mutualFriends: 8, online: false },
-  ])
-
-  const [requests] = useState([
-    { id: 1, name: 'Emma Wilson', avatar: 'E', subjects: ['Literature', 'History'], mutualFriends: 1, message: 'Hey! I saw you\'re in the calculus study group. Mind if I join?' },
-    { id: 2, name: 'Frank Miller', avatar: 'F', subjects: ['Physics', 'Chemistry'], mutualFriends: 0, message: 'Would love to collaborate on the physics project!' },
-  ])
-
-  const [suggestions] = useState([
-    { id: 1, name: 'Grace Kim', avatar: 'G', subjects: ['Computer Science', 'Mathematics'], mutualFriends: 4, reason: 'Studying similar subjects' },
-    { id: 2, name: 'Henry Chen', avatar: 'H', subjects: ['Physics', 'Engineering'], mutualFriends: 2, reason: 'In your study groups' },
-    { id: 3, name: 'Ivy Martinez', avatar: 'I', subjects: ['Biology', 'Chemistry'], mutualFriends: 3, reason: 'Mutual connections' },
-  ])
+  // Real data from backend
+  const [friends, setFriends] = useState([])
+  const [requests, setRequests] = useState([])
+  const [friendsLoading, setFriendsLoading] = useState(true)
+  const [requestsLoading, setRequestsLoading] = useState(true)
 
   const handleSendRequest = async (userId) => {
     setIsLoading(true)
     try {
-      // ============================================
-      // BACKEND INTEGRATION PLACEHOLDER
-      // ============================================
-      // Replace this setTimeout with your actual API call
-      // Example:
-      // const response = await fetch('/api/friends/request', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ userId })
-      // })
+      // Get Supabase session for auth token
+      const { data: { session } } = await supabase.auth.getSession()
       
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      console.log('Friend request sent to:', userId)
+      const headers = {
+        'Content-Type': 'application/json',
+      }
+      
+      // Add auth token if available
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+
+      const response = await fetch('http://localhost:4002/api/friends/add', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ userId })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        alert('Friend request sent successfully!')
+        // Clear search results
+        setSearchResults([])
+        setSearchQuery('')
+      } else {
+        alert(data.error || 'Failed to send friend request')
+      }
     } catch (err) {
       console.error('Error sending request:', err)
+      alert('Failed to send friend request')
     } finally {
       setIsLoading(false)
     }
@@ -53,19 +59,35 @@ export default function Friends() {
   const handleAcceptRequest = async (requestId) => {
     setIsLoading(true)
     try {
-      // ============================================
-      // BACKEND INTEGRATION PLACEHOLDER
-      // ============================================
-      // Replace this setTimeout with your actual API call
-      // Example:
-      // const response = await fetch(`/api/friends/requests/${requestId}/accept`, {
-      //   method: 'POST'
-      // })
+      const { data: { session } } = await supabase.auth.getSession()
       
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      console.log('Friend request accepted:', requestId)
+      const headers = {
+        'Content-Type': 'application/json',
+      }
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+
+      const response = await fetch(`http://localhost:4002/api/friends/requests/${requestId}/accept`, {
+        method: 'POST',
+        headers
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        alert('Friend request accepted!')
+        // Refresh requests
+        fetchRequests()
+        // Refresh friends
+        fetchFriends()
+      } else {
+        alert(data.error || 'Failed to accept friend request')
+      }
     } catch (err) {
       console.error('Error accepting request:', err)
+      alert('Failed to accept friend request')
     } finally {
       setIsLoading(false)
     }
@@ -74,19 +96,33 @@ export default function Friends() {
   const handleDeclineRequest = async (requestId) => {
     setIsLoading(true)
     try {
-      // ============================================
-      // BACKEND INTEGRATION PLACEHOLDER
-      // ============================================
-      // Replace this setTimeout with your actual API call
-      // Example:
-      // const response = await fetch(`/api/friends/requests/${requestId}/decline`, {
-      //   method: 'POST'
-      // })
+      const { data: { session } } = await supabase.auth.getSession()
       
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      console.log('Friend request declined:', requestId)
+      const headers = {
+        'Content-Type': 'application/json',
+      }
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+
+      const response = await fetch(`http://localhost:4002/api/friends/requests/${requestId}/decline`, {
+        method: 'POST',
+        headers
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        alert('Friend request declined')
+        // Refresh requests
+        fetchRequests()
+      } else {
+        alert(data.error || 'Failed to decline friend request')
+      }
     } catch (err) {
       console.error('Error declining request:', err)
+      alert('Failed to decline friend request')
     } finally {
       setIsLoading(false)
     }
@@ -96,29 +132,147 @@ export default function Friends() {
     if (window.confirm('Are you sure you want to remove this friend?')) {
       setIsLoading(true)
       try {
-        // ============================================
-        // BACKEND INTEGRATION PLACEHOLDER
-        // ============================================
-        // Replace this setTimeout with your actual API call
-        // Example:
-        // const response = await fetch(`/api/friends/${friendId}`, {
-        //   method: 'DELETE'
-        // })
+        const { data: { session } } = await supabase.auth.getSession()
         
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        console.log('Friend removed:', friendId)
+        const headers = {
+          'Content-Type': 'application/json',
+        }
+        
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`
+        }
+
+        const response = await fetch(`http://localhost:4002/api/friends/${friendId}`, {
+          method: 'DELETE',
+          headers
+        })
+
+        if (response.ok) {
+          alert('Friend removed')
+          fetchFriends()
+        } else {
+          alert('Failed to remove friend')
+        }
       } catch (err) {
         console.error('Error removing friend:', err)
+        alert('Failed to remove friend')
       } finally {
         setIsLoading(false)
       }
     }
   }
 
-  const filteredFriends = friends.filter(friend =>
-    friend.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    friend.subjects.some(subject => subject.toLowerCase().includes(searchQuery.toLowerCase()))
-  )
+  // Fetch friends from backend
+  const fetchFriends = async () => {
+    try {
+      setFriendsLoading(true)
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers = {
+        'Content-Type': 'application/json',
+      }
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+
+      const response = await fetch('http://localhost:4002/api/friends', {
+        headers
+      })
+      const data = await response.json()
+
+      if (response.ok) {
+        setFriends(data.friends || [])
+      } else {
+        console.error('Failed to fetch friends:', data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching friends:', error)
+    } finally {
+      setFriendsLoading(false)
+    }
+  }
+
+  // Fetch friend requests from backend
+  const fetchRequests = async () => {
+    try {
+      setRequestsLoading(true)
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers = {
+        'Content-Type': 'application/json',
+      }
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+
+      const response = await fetch('http://localhost:4002/api/friends/requests', {
+        headers
+      })
+      const data = await response.json()
+
+      if (response.ok) {
+        setRequests(data.requests || [])
+      } else {
+        console.error('Failed to fetch requests:', data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching requests:', error)
+    } finally {
+      setRequestsLoading(false)
+    }
+  }
+
+  // Load data on mount
+  useEffect(() => {
+    fetchFriends()
+    fetchRequests()
+  }, [])
+
+  const handleSearchUsers = async (query) => {
+    setSearchQuery(query)
+    
+    if (query.length < 2) {
+      setSearchResults([])
+      return
+    }
+
+    setIsSearching(true)
+    try {
+      // Get Supabase session for auth token
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers = {
+        'Content-Type': 'application/json',
+      }
+      
+      // Add auth token if available
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+
+      const response = await fetch('http://localhost:4002/api/users/search', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ query })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setSearchResults(data.users || [])
+      } else {
+        console.error('Search error:', data.error)
+        setSearchResults([])
+      }
+    } catch (error) {
+      console.error('Error searching users:', error)
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
+  }
 
   return (
     <ProtectedRoute>
@@ -151,7 +305,7 @@ export default function Friends() {
                 className={`friends-tab ${activeTab === 'friends' ? 'friends-tab-active' : ''}`}
                 onClick={() => setActiveTab('friends')}
               >
-                Friends ({friends.length})
+                Friends {friends.length > 0 && `(${friends.length})`}
               </button>
               <button
                 className={`friends-tab ${activeTab === 'requests' ? 'friends-tab-active' : ''}`}
@@ -172,9 +326,15 @@ export default function Friends() {
               <input
                 type="text"
                 className="friends-search-input"
-                placeholder="Search friends by name or subject..."
+                placeholder={activeTab === 'discover' ? "Search users by email or name..." : "Search friends by name or subject..."}
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  if (activeTab === 'discover') {
+                    handleSearchUsers(e.target.value)
+                  } else {
+                    setSearchQuery(e.target.value)
+                  }
+                }}
               />
             </div>
 
@@ -182,127 +342,178 @@ export default function Friends() {
             <div className="friends-content">
               {activeTab === 'friends' && (
                 <div className="friends-list">
-                  {filteredFriends.length === 0 ? (
+                  {friendsLoading ? (
+                    <div className="friends-empty">
+                      <div className="loading-spinner">Loading friends...</div>
+                    </div>
+                  ) : friends.length === 0 ? (
                     <div className="friends-empty">
                       <div className="friends-empty-icon">👥</div>
-                      <h3>No friends found</h3>
-                      <p>Try different search terms or discover new connections</p>
+                      <h3>No friends yet</h3>
+                      <p>Use the Discover tab to find and add friends</p>
                     </div>
                   ) : (
-                    filteredFriends.map(friend => (
-                      <div key={friend.id} className="friend-card">
-                        <div className="friend-avatar">
-                          {friend.avatar}
-                          {friend.online && <span className="friend-status-online"></span>}
-                        </div>
-                        <div className="friend-info">
-                          <div className="friend-name">{friend.name}</div>
-                          <div className="friend-subjects">
-                            {friend.subjects.map(subject => (
-                              <span key={subject} className="badge badge-secondary">{subject}</span>
-                            ))}
+                    friends.map(friend => {
+                      let avatarDisplay
+                      if (friend.avatar && friend.avatar.startsWith('http')) {
+                        avatarDisplay = <img src={friend.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                      } else {
+                        avatarDisplay = friend.avatar || friend.name[0]
+                      }
+
+                      return (
+                        <div key={friend.id} className="friend-card">
+                          <div className="friend-avatar">
+                            {avatarDisplay}
+                            {friend.online && <span className="friend-status-online"></span>}
                           </div>
-                          <div className="friend-meta">
-                            <span className="friend-mutual">{friend.mutualFriends} mutual friends</span>
-                            <span className={`friend-status ${friend.online ? 'friend-status-online' : 'friend-status-offline'}`}>
-                              {friend.online ? 'Online' : 'Offline'}
-                            </span>
+                          <div className="friend-info">
+                            <div className="friend-name">{friend.name}</div>
+                            <div className="friend-meta">
+                              <span className={`friend-status ${friend.online ? 'friend-status-online' : 'friend-status-offline'}`}>
+                                {friend.online ? 'Online' : 'Offline'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="friend-actions">
+                            <button className="btn btn-sm btn-ghost">Message</button>
+                            <button className="btn btn-sm btn-ghost">Profile</button>
+                            <button
+                              className="btn btn-sm btn-ghost-danger"
+                              onClick={() => handleRemoveFriend(friend.id)}
+                            >
+                              Remove
+                            </button>
                           </div>
                         </div>
-                        <div className="friend-actions">
-                          <button className="btn btn-sm btn-ghost">Message</button>
-                          <button className="btn btn-sm btn-ghost">Profile</button>
-                          <button
-                            className="btn btn-sm btn-ghost-danger"
-                            onClick={() => handleRemoveFriend(friend.id)}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    ))
+                      )
+                    })
                   )}
                 </div>
               )}
 
               {activeTab === 'requests' && (
                 <div className="friends-list">
-                  {requests.length === 0 ? (
+                  {requestsLoading ? (
+                    <div className="friends-empty">
+                      <div className="loading-spinner">Loading requests...</div>
+                    </div>
+                  ) : requests.length === 0 ? (
                     <div className="friends-empty">
                       <div className="friends-empty-icon">📨</div>
                       <h3>No pending requests</h3>
                       <p>You're all caught up!</p>
                     </div>
                   ) : (
-                    requests.map(request => (
-                      <div key={request.id} className="friend-card friend-card-request">
-                        <div className="friend-avatar">{request.avatar}</div>
-                        <div className="friend-info">
-                          <div className="friend-name">{request.name}</div>
-                          <div className="friend-subjects">
-                            {request.subjects.map(subject => (
-                              <span key={subject} className="badge badge-secondary">{subject}</span>
-                            ))}
+                    requests.map(request => {
+                      let avatarDisplay
+                      if (request.avatar && request.avatar.startsWith('http')) {
+                        avatarDisplay = <img src={request.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                      } else {
+                        avatarDisplay = request.avatar || request.name[0]
+                      }
+
+                      return (
+                        <div key={request.id} className="friend-card friend-card-request">
+                          <div className="friend-avatar">{avatarDisplay}</div>
+                          <div className="friend-info">
+                            <div className="friend-name">{request.name}</div>
+                            <div className="friend-email">{request.email}</div>
+                            <div className="friend-message">{request.message}</div>
                           </div>
-                          <div className="friend-message">{request.message}</div>
-                          <div className="friend-meta">
-                            <span className="friend-mutual">{request.mutualFriends} mutual friends</span>
+                          <div className="friend-actions">
+                            <button
+                              className="btn btn-sm btn-primary"
+                              onClick={() => handleAcceptRequest(request.id)}
+                              disabled={isLoading}
+                            >
+                              Accept
+                            </button>
+                            <button
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => handleDeclineRequest(request.id)}
+                              disabled={isLoading}
+                            >
+                              Decline
+                            </button>
                           </div>
                         </div>
-                        <div className="friend-actions">
-                          <button
-                            className="btn btn-sm btn-primary"
-                            onClick={() => handleAcceptRequest(request.id)}
-                            disabled={isLoading}
-                          >
-                            Accept
-                          </button>
-                          <button
-                            className="btn btn-sm btn-ghost"
-                            onClick={() => handleDeclineRequest(request.id)}
-                            disabled={isLoading}
-                          >
-                            Decline
-                          </button>
-                        </div>
-                      </div>
-                    ))
+                      )
+                    })
                   )}
                 </div>
               )}
 
               {activeTab === 'discover' && (
                 <div className="friends-list">
-                  <div className="discover-section">
-                    <h3>Suggested for you</h3>
-                    {suggestions.map(suggestion => (
-                      <div key={suggestion.id} className="friend-card">
-                        <div className="friend-avatar">{suggestion.avatar}</div>
-                        <div className="friend-info">
-                          <div className="friend-name">{suggestion.name}</div>
-                          <div className="friend-subjects">
-                            {suggestion.subjects.map(subject => (
-                              <span key={subject} className="badge badge-secondary">{subject}</span>
-                            ))}
-                          </div>
-                          <div className="friend-reason">✨ {suggestion.reason}</div>
-                          <div className="friend-meta">
-                            <span className="friend-mutual">{suggestion.mutualFriends} mutual friends</span>
-                          </div>
+                  {/* Search Results */}
+                  {searchQuery.length >= 2 && (
+                    <div className="discover-section">
+                      <h3>Search Results</h3>
+                      {isSearching ? (
+                        <div className="friends-empty">
+                          <div className="loading-spinner">Searching...</div>
                         </div>
-                        <div className="friend-actions">
-                          <button
-                            className="btn btn-sm btn-primary"
-                            onClick={() => handleSendRequest(suggestion.id)}
-                            disabled={isLoading}
-                          >
-                            Add Friend
-                          </button>
-                          <button className="btn btn-sm btn-ghost">Profile</button>
+                      ) : searchResults.length === 0 ? (
+                        <div className="friends-empty">
+                          <div className="friends-empty-icon">🔍</div>
+                          <h3>No users found</h3>
+                          <p>Try a different search term</p>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ) : (
+                        searchResults.map(user => {
+                          // Determine avatar display
+                          let avatarDisplay
+                          if (user.avatar_url && user.avatar_url.startsWith('http')) {
+                            avatarDisplay = <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                          } else if (user.first_name || user.last_name) {
+                            avatarDisplay = (user.first_name || user.last_name)[0].toUpperCase()
+                          } else {
+                            avatarDisplay = user.email[0].toUpperCase()
+                          }
+
+                          return (
+                            <div key={user.id} className="friend-card">
+                              <div className="friend-avatar">
+                                {avatarDisplay}
+                                {user.is_online && <span className="friend-status-online"></span>}
+                              </div>
+                              <div className="friend-info">
+                                <div className="friend-name">
+                                  {user.first_name || user.last_name ? `${user.first_name} ${user.last_name}` : user.email}
+                                </div>
+                                <div className="friend-email">{user.email}</div>
+                                <div className="friend-meta">
+                                  <span className={`friend-status ${user.is_online ? 'friend-status-online' : 'friend-status-offline'}`}>
+                                    {user.is_online ? 'Online' : 'Offline'}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="friend-actions">
+                                <button
+                                  className="btn btn-sm btn-primary"
+                                  onClick={() => handleSendRequest(user.id)}
+                                  disabled={isLoading}
+                                >
+                                  Add Friend
+                                </button>
+                                <button className="btn btn-sm btn-ghost">Profile</button>
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  )}
+
+                  {/* Empty state when not searching */}
+                  {searchQuery.length < 2 && (
+                    <div className="friends-empty">
+                      <div className="friends-empty-icon">🔍</div>
+                      <h3>Search for users</h3>
+                      <p>Type at least 2 characters to search for users by email or name</p>
+                    </div>
+                  )}
 
                   <div className="discover-section">
                     <h3>Find by subject</h3>

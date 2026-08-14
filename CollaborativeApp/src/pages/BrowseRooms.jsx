@@ -1,7 +1,10 @@
 import '../styles/pages.css'
 import ThemeToggle from '../components/ThemeToggle'
+import { useAuth } from '../context/AuthContext'
 
 export default function BrowseRooms(){
+  const { isAuthenticated } = useAuth()
+  
   const rooms = [
     { id: 1, name: 'Calculus 101 Study Group', subject: 'Mathematics', participants: 8, status: 'active' },
     { id: 2, name: 'Organic Chemistry Review', subject: 'Science', participants: 3, status: 'active' },
@@ -18,8 +21,17 @@ export default function BrowseRooms(){
           <a href="#/" className="page-header-title">CollaborativeApp</a>
         </div>
         <nav className="page-header-nav">
-          <a href="#/login" className="btn btn-ghost btn-sm">Sign In</a>
-          <a href="#/signup" className="btn btn-primary btn-sm">Sign Up</a>
+          {isAuthenticated ? (
+            <>
+              <a href="#/dashboard" className="btn btn-ghost btn-sm">Dashboard</a>
+              <a href="#/profile" className="btn btn-primary btn-sm">Profile</a>
+            </>
+          ) : (
+            <>
+              <a href="#/login" className="btn btn-ghost btn-sm">Sign In</a>
+              <a href="#/signup" className="btn btn-primary btn-sm">Sign Up</a>
+            </>
+          )}
           <a href="#/create" className="btn btn-primary btn-sm">Create Room</a>
           <ThemeToggle />
           <a href="#/" className="btn btn-ghost btn-sm">Back to Home</a>
