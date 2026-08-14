@@ -2,8 +2,11 @@ import './styles/home.css'
 import logo from './assets/logo.svg'
 import hero from './assets/hero-student.svg'
 import ThemeToggle from './components/ThemeToggle'
+import { useAuth } from './context/AuthContext'
 
 function Home() {
+  const { isAuthenticated, user } = useAuth()
+
   return (
     <div className="home-root">
       <header className="site-header">
@@ -16,33 +19,57 @@ function Home() {
         </div>
         <nav className="main-nav">
           <a href="#/features">Features</a>
-          <a href="#/features">How it works</a>
           <a href="#/about">About</a>
           <ThemeToggle />
-          <a href="#/login" className="btn btn-ghost btn-sm">Sign In</a>
-          <a href="#/signup" className="btn btn-primary btn-sm">Sign Up</a>
+          {isAuthenticated ? (
+            <>
+              <a href="#/dashboard" className="btn btn-ghost btn-sm">Dashboard</a>
+              <a href="#/profile" className="btn btn-primary btn-sm">Profile</a>
+            </>
+          ) : (
+            <>
+              <a href="#/login" className="btn btn-ghost btn-sm">Sign In</a>
+              <a href="#/signup" className="btn btn-primary btn-sm">Sign Up</a>
+            </>
+          )}
         </nav>
       </header>
 
       <main>
-        <section className="hero student-hero">
-          <div className="hero-content">
-            <h2>Make group study effortless</h2>
-            <p className="lead">Join classmates in live study rooms, share notes, plan assignments, and level up with friendly challenges.</p>
-            <div className="cta-row">
-              <a href="#/create" className="btn primary">Create a study room</a>
-              <a href="#/browse" className="btn ghost">Browse public rooms</a>
+        {isAuthenticated ? (
+          <section className="hero student-hero">
+            <div className="hero-content">
+              <h2>Welcome back, {user?.firstName || user?.email?.split('@')[0]}! 👋</h2>
+              <p className="lead">Ready to continue your learning journey? Jump back into your study rooms or check your progress.</p>
+              <div className="cta-row">
+                <a href="#/dashboard" className="btn primary">Go to Dashboard</a>
+                <a href="#/messages" className="btn ghost">Check Messages</a>
+              </div>
             </div>
-            <div className="trust">
-              <span className="badge">Free for students</span>
-              <span className="badge muted">No credit card</span>
-              <span className="badge">Collaborative notes</span>
+            <div className="hero-visual">
+              <img src={hero} alt="Students collaborating illustration" />
             </div>
-          </div>
-          <div className="hero-visual">
-            <img src={hero} alt="Students collaborating illustration" />
-          </div>
-        </section>
+          </section>
+        ) : (
+          <section className="hero student-hero">
+            <div className="hero-content">
+              <h2>Make group study effortless</h2>
+              <p className="lead">Join classmates in live study rooms, share notes, plan assignments, and level up with friendly challenges.</p>
+              <div className="cta-row">
+                <a href="#/create" className="btn primary">Create a study room</a>
+                <a href="#/browse" className="btn ghost">Browse public rooms</a>
+              </div>
+              <div className="trust">
+                <span className="badge">Free for students</span>
+                <span className="badge muted">No credit card</span>
+                <span className="badge">Collaborative notes</span>
+              </div>
+            </div>
+            <div className="hero-visual">
+              <img src={hero} alt="Students collaborating illustration" />
+            </div>
+          </section>
+        )}
 
         <section id="features" className="features">
           <h3>Student-focused building blocks</h3>

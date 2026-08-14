@@ -1,7 +1,10 @@
 import '../styles/pages.css'
 import ThemeToggle from '../components/ThemeToggle'
+import { useAuth } from '../context/AuthContext'
 
 export default function Features(){
+  const { isAuthenticated, user } = useAuth()
+  
   const coreFeatures = [
     { icon: '🎯', title: 'Live Study Rooms', description: 'Create temporary rooms for group sessions with synced cursors and voice chat.', status: 'available' },
     { icon: '📝', title: 'Shared Notes', description: 'Collaborative documents with version history and highlights.', status: 'available' },
@@ -10,12 +13,12 @@ export default function Features(){
   ]
 
   const advancedFeatures = [
-    { icon: '🎙️', title: 'Voice Chat Integration', description: 'Crystal-clear audio communication during study sessions.', status: 'coming-soon' },
+    { icon: '🎙️', title: 'Voice Chat Integration', description: 'Crystal-clear audio communication during study sessions.', status: 'available' },
+    { icon: '📹', title: 'Video Call Integration', description: 'Face-to-face video collaboration with screen sharing capabilities.', status: 'available' },
     { icon: '⏱️', title: 'Productivity Timers', description: 'Built-in Pomodoro method and customizable timer settings.', status: 'coming-soon' },
     { icon: '🤖', title: 'AI Study Insights', description: 'Automated tracking of challenging lessons with targeted assistance.', status: 'coming-soon' },
     { icon: '🎨', title: 'Collaborative Whiteboard', description: 'Shared digital whiteboards for real-time brainstorming sessions.', status: 'coming-soon' },
     { icon: '📊', title: 'Performance Analytics', description: 'Comparative analysis of historical and current performance scores.', status: 'coming-soon' },
-    { icon: '🧠', title: 'Metacognitive Reflection', description: 'AI analysis of mock exam results to improve learning strategies.', status: 'coming-soon' },
   ]
 
   return (
@@ -26,8 +29,17 @@ export default function Features(){
           <a href="#/" className="page-header-title">CollaborativeApp</a>
         </div>
         <nav className="page-header-nav">
-          <a href="#/login" className="btn btn-ghost btn-sm">Sign In</a>
-          <a href="#/signup" className="btn btn-primary btn-sm">Sign Up</a>
+          {isAuthenticated ? (
+            <>
+              <a href="#/dashboard" className="btn btn-ghost btn-sm">Dashboard</a>
+              <a href="#/profile" className="btn btn-primary btn-sm">Profile</a>
+            </>
+          ) : (
+            <>
+              <a href="#/login" className="btn btn-ghost btn-sm">Sign In</a>
+              <a href="#/signup" className="btn btn-primary btn-sm">Sign Up</a>
+            </>
+          )}
           <ThemeToggle />
           <a href="#/" className="btn btn-ghost btn-sm">Back to Home</a>
         </nav>

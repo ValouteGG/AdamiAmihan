@@ -1,7 +1,10 @@
 import '../styles/pages.css'
 import ThemeToggle from '../components/ThemeToggle'
+import { useAuth } from '../context/AuthContext'
 
 export default function About(){
+  const { isAuthenticated } = useAuth()
+  
   return (
     <div className="page-root">
       <header className="page-header">
@@ -10,8 +13,17 @@ export default function About(){
           <a href="#/" className="page-header-title">CollaborativeApp</a>
         </div>
         <nav className="page-header-nav">
-          <a href="#/login" className="btn btn-ghost btn-sm">Sign In</a>
-          <a href="#/signup" className="btn btn-primary btn-sm">Sign Up</a>
+          {isAuthenticated ? (
+            <>
+              <a href="#/dashboard" className="btn btn-ghost btn-sm">Dashboard</a>
+              <a href="#/profile" className="btn btn-primary btn-sm">Profile</a>
+            </>
+          ) : (
+            <>
+              <a href="#/login" className="btn btn-ghost btn-sm">Sign In</a>
+              <a href="#/signup" className="btn btn-primary btn-sm">Sign Up</a>
+            </>
+          )}
           <ThemeToggle />
           <a href="#/" className="btn btn-ghost btn-sm">Back to Home</a>
         </nav>
