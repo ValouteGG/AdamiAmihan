@@ -309,9 +309,7 @@ export default function Signup() {
                 </div>
               )}
               {formData.confirmPassword && formData.password === formData.confirmPassword && (
-                <div className="auth-success">
-                  Passwords match
-                </div>
+                <div className="auth-success"></div>
               )}
             </div>
 
