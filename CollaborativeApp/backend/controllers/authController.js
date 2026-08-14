@@ -1,6 +1,46 @@
 const supabase = require('../config/supabase');
 
 /**
+ * Handle Google OAuth login URL generation
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const googleAuthUrl = async (req, res) => {
+  try {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5175';
+    
+    console.log('Generating Google OAuth URL with redirect to:', `${frontendUrl}/#/auth/callback`);
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${frontendUrl}/#/auth/callback`,
+        skipBrowserRedirect: false
+      }
+    });
+
+    if (error) {
+      console.error('Google OAuth error:', error);
+      return res.status(400).json({ 
+        error: error.message,
+        message: 'Failed to generate Google OAuth URL'
+      });
+    }
+
+    console.log('Google OAuth URL generated successfully');
+    res.status(200).json({
+      url: data.url
+    });
+  } catch (error) {
+    console.error('Google auth URL error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: 'An unexpected error occurred'
+    });
+  }
+};
+
+/**
  * Handle user signup
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
@@ -166,5 +206,6 @@ const login = async (req, res) => {
 
 module.exports = {
   signup,
-  login
+  login,
+  googleAuthUrl
 };
