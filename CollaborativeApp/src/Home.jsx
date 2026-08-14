@@ -19,7 +19,6 @@ function Home() {
         </div>
         <nav className="main-nav">
           <a href="#/features">Features</a>
-          <a href="#/features">How it works</a>
           <a href="#/about">About</a>
           <ThemeToggle />
           {isAuthenticated ? (

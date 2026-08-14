@@ -37,7 +37,9 @@ export function AuthProvider({ children }) {
             email: session.user.email,
             firstName: session.user.user_metadata?.first_name || '',
             lastName: session.user.user_metadata?.last_name || '',
-            avatar: session.user.user_metadata?.first_name?.[0] || session.user.email[0]
+            avatar: session.user.user_metadata?.avatar || session.user.user_metadata?.first_name?.[0] || session.user.email[0],
+            createdAt: session.user.created_at,
+            confirmedAt: session.user.confirmed_at
           }
           setUser(userData)
           setIsAuthenticated(true)
@@ -69,7 +71,9 @@ export function AuthProvider({ children }) {
           email: session.user.email,
           firstName: session.user.user_metadata?.first_name || '',
           lastName: session.user.user_metadata?.last_name || '',
-          avatar: session.user.user_metadata?.first_name?.[0] || session.user.email[0]
+          avatar: session.user.user_metadata?.avatar || session.user.user_metadata?.first_name?.[0] || session.user.email[0],
+          createdAt: session.user.created_at,
+          confirmedAt: session.user.confirmed_at
         }
         setUser(userData)
         setIsAuthenticated(true)
@@ -102,7 +106,9 @@ export function AuthProvider({ children }) {
         email: data.user.email,
         firstName: data.user.user_metadata?.first_name || '',
         lastName: data.user.user_metadata?.last_name || '',
-        avatar: data.user.user_metadata?.first_name?.[0] || data.user.email[0]
+        avatar: data.user.user_metadata?.avatar || data.user.user_metadata?.first_name?.[0] || data.user.email[0],
+        createdAt: data.user.created_at,
+        confirmedAt: data.user.confirmed_at
       }
 
       setUser(userData)

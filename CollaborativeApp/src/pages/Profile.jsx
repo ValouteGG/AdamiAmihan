@@ -1,20 +1,37 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import '../styles/pages.css'
 import ThemeToggle from '../components/ThemeToggle'
 import ProtectedRoute from '../components/ProtectedRoute'
+import { useAuth } from '../context/AuthContext'
 
 export default function Profile() {
+  const { user } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [profile, setProfile] = useState({
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@example.com',
-    bio: 'Passionate learner and collaborative problem solver',
+    firstName: '',
+    lastName: '',
+    email: '',
+    bio: '',
     avatar: null,
     timezone: 'UTC-5',
     language: 'en'
   })
+
+  // Initialize profile with real user data
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        bio: 'Passionate learner and collaborative problem solver',
+        avatar: user.avatar || null,
+        timezone: 'UTC-5',
+        language: 'en'
+      })
+    }
+  }, [user])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -108,11 +125,11 @@ export default function Profile() {
             <div className="profile-sidebar">
               <div className="profile-avatar-section">
                 <div className="profile-avatar">
-                  {profile.avatar ? (
+                  {profile.avatar && typeof profile.avatar === 'string' && !profile.avatar.startsWith('/') ? (
                     <img src={profile.avatar} alt="Profile" className="profile-avatar-image" />
                   ) : (
                     <div className="profile-avatar-placeholder">
-                      {profile.firstName[0]}{profile.lastName[0]}
+                      {profile.firstName[0] || profile.email[0]}{profile.lastName[0] || ''}
                     </div>
                   )}
                 </div>
@@ -275,8 +292,8 @@ export default function Profile() {
                     <div className="profile-status-value">Student</div>
                   </div>
                   <div className="profile-status-item">
-                    <div className="profile-status-label">Member Since</div>
-                    <div className="profile-status-value">January 2024</div>
+                    <div className="profile-status-label">User ID</div>
+                    <div className="profile-status-value">{user?.id || 'N/A'}</div>
                   </div>
                   <div className="profile-status-item">
                     <div className="profile-status-label">Email Verified</div>
