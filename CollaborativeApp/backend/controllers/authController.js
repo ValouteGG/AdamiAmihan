@@ -1,6 +1,99 @@
 const supabase = require('../config/supabase');
 
 /**
+ * Helper function to create or update user profile
+ */
+const createOrUpdateUserProfile = async (user) => {
+  try {
+    const { id, email, user_metadata } = user;
+    
+    // Extract name from metadata or email
+    const firstName = user_metadata?.first_name || user_metadata?.name?.split(' ')[0] || email?.split('@')[0] || '';
+    const lastName = user_metadata?.last_name || user_metadata?.name?.split(' ').slice(1).join(' ') || '';
+    const avatarUrl = user_metadata?.avatar_url || user_metadata?.picture || '';
+    
+    console.log('Creating/updating user profile:', { id, firstName, lastName, avatarUrl });
+    
+    // Check if profile exists
+    const { data: existingProfile } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (existingProfile) {
+      // Update existing profile
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({
+          first_name: firstName,
+          last_name: lastName,
+          avatar_url: avatarUrl,
+          email: email,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+      
+      if (error) {
+        console.error('Error updating user profile:', error);
+      } else {
+        console.log('User profile updated successfully');
+      }
+    } else {
+      // Create new profile
+      const { error } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: id,
+          first_name: firstName,
+          last_name: lastName,
+          avatar_url: avatarUrl,
+          email: email,
+          is_online: false
+        });
+      
+      if (error) {
+        console.error('Error creating user profile:', error);
+      } else {
+        console.log('User profile created successfully');
+      }
+    }
+  } catch (error) {
+    console.error('Error in createOrUpdateUserProfile:', error);
+  }
+};
+
+/**
+ * Update user profile manually
+ */
+const updateProfile = async (req, res) => {
+  try {
+    const { userId, firstName, lastName, avatarUrl } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    const { error } = await supabase
+      .from('user_profiles')
+      .upsert({
+        id: userId,
+        first_name: firstName || '',
+        last_name: lastName || '',
+        avatar_url: avatarUrl || '',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+
+    if (error) throw error;
+
+    res.json({ message: 'Profile updated successfully' });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+};
+
+/**
  * Handle Google OAuth login URL generation
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
@@ -183,6 +276,9 @@ const login = async (req, res) => {
       });
     }
 
+    // Create or update user profile
+    await createOrUpdateUserProfile(data.user);
+
     // Return success response
     res.status(200).json({
       message: 'Login successful',
@@ -204,8 +300,60 @@ const login = async (req, res) => {
   }
 };
 
+/**
+ * Handle OAuth callback and user profile creation
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const handleOAuthCallback = async (req, res) => {
+  try {
+    const { accessToken, refreshToken } = req.body;
+
+    if (!accessToken) {
+      return res.status(400).json({ 
+        error: 'Access token is required',
+        message: 'No access token provided'
+      });
+    }
+
+    // Get user from Supabase using the access token
+    const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+
+    if (error || !user) {
+      console.error('Error getting user from token:', error);
+      return res.status(401).json({ 
+        error: 'Invalid token',
+        message: 'Failed to get user information'
+      });
+    }
+
+    // Create or update user profile
+    await createOrUpdateUserProfile(user);
+
+    // Return success response
+    res.status(200).json({
+      message: 'User profile created/updated successfully',
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.user_metadata?.first_name || user.user_metadata?.name?.split(' ')[0] || '',
+        lastName: user.user_metadata?.last_name || user.user_metadata?.name?.split(' ').slice(1).join(' ') || '',
+        avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture || ''
+      }
+    });
+
+  } catch (error) {
+    console.error('OAuth callback error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: 'An unexpected error occurred during OAuth callback'
+    });
+  }
+};
+
 module.exports = {
   signup,
   login,
-  googleAuthUrl
+  googleAuthUrl,
+  updateProfile
 };

@@ -95,7 +95,7 @@ export default function Signup() {
       console.log('Attempting signup with:', { email: formData.email, firstName: formData.firstName })
       
       // Call backend API for signup
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4005'
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4002'
       const response = await fetch(`${apiUrl}/api/auth/signup`, {
         method: 'POST',
         headers: {
@@ -156,7 +156,7 @@ export default function Signup() {
   const handleSocialSignup = async (provider) => {
     try {
       if (provider === 'google') {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4005'
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4002'
         console.log('Attempting Google signup with API URL:', apiUrl)
         
         const response = await fetch(`${apiUrl}/api/auth/google/url`, {

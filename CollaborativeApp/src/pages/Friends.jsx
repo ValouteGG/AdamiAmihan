@@ -162,6 +162,12 @@ export default function Friends() {
     }
   }
 
+  // Navigate to Messages and open/create a conversation with this friend
+  const handleMessageFriend = (friend) => {
+    localStorage.setItem('openConversationWithUserId', friend.id)
+    window.location.hash = '#/messages'
+  }
+
   // Fetch friends from backend
   const fetchFriends = async () => {
     try {
@@ -376,7 +382,12 @@ export default function Friends() {
                             </div>
                           </div>
                           <div className="friend-actions">
-                            <button className="btn btn-sm btn-ghost">Message</button>
+                            <button
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => handleMessageFriend(friend)}
+                            >
+                              Message
+                            </button>
                             <button className="btn btn-sm btn-ghost">Profile</button>
                             <button
                               className="btn btn-sm btn-ghost-danger"

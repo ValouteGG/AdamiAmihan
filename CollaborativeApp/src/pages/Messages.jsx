@@ -4,6 +4,7 @@ import '../styles/pages.css'
 import ThemeToggle from '../components/ThemeToggle'
 import ProtectedRoute from '../components/ProtectedRoute'
 import webrtcClient from '../utils/webrtc'
+import chatSocketClient from '../utils/chatSocket'
 import { useAuth } from '../context/AuthContext'
 
 export default function Messages() {
@@ -31,11 +32,101 @@ export default function Messages() {
   const [messages, setMessages] = useState([])
   const [conversationsLoading, setConversationsLoading] = useState(true)
   const [messagesLoading, setMessagesLoading] = useState(false)
+  const [friends, setFriends] = useState([])
+  const [friendsLoading, setFriendsLoading] = useState(true)
   
   // Add friend state
   const [showAddFriend, setShowAddFriend] = useState(false)
   const [friendEmail, setFriendEmail] = useState('')
   const [addingFriend, setAddingFriend] = useState(false)
+  
+  // Real-time chat state
+  const [typingUsers, setTypingUsers] = useState(new Map())
+  const typingTimeoutRef = useRef(null)
+  
+  // Helper function to format time
+  const formatTime = (dateString) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now - date
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays < 7) return `${diffDays}d ago`
+    
+    return date.toLocaleDateString()
+  }
+
+  // Renders an avatar value that may be a URL or a plain initial letter.
+  // Rendering item.avatar directly as JSX text (the old behavior) prints
+  // the raw URL as overflowing text when it's a Google/avatar photo URL
+  // instead of showing an image.
+  const AvatarDisplay = ({ value }) => {
+    if (value && (value.startsWith('http') || value.startsWith('/'))) {
+      return <img src={value} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+    }
+    return <>{value}</>
+  }
+
+  // Helper function to get display avatar (name initial or email initial)
+  const getDisplayAvatar = (item) => {
+    // If it's a valid image URL, use it
+    if (item.avatar && (item.avatar.startsWith('http') || item.avatar.startsWith('/'))) {
+      return item.avatar
+    }
+    // Otherwise use first letter of name
+    if (item.name) {
+      return item.name.charAt(0).toUpperCase()
+    }
+    // If no name, use first letter of email if available
+    if (item.email) {
+      return item.email.charAt(0).toUpperCase()
+    }
+    // Fallback
+    return '?'
+  }
+
+  // Combine conversations and friends for the sidebar
+  const combinedChatList = () => {
+    // Get set of user IDs that already have conversations
+    const userIdsWithConversations = new Set()
+    conversations.forEach(conv => {
+      // The conversation object should have participant info embedded
+      // We need to extract the other participant's user ID
+      // For now, we'll use the conversation's participant info if available
+      if (conv.participantId) {
+        userIdsWithConversations.add(conv.participantId)
+      }
+    })
+    
+    // Process existing conversations to ensure proper avatar display
+    const processedConversations = conversations.map(conv => ({
+      ...conv,
+      avatar: getDisplayAvatar(conv)
+    }))
+    
+    // Add friends who don't have conversations yet
+    const friendsWithoutConversations = friends.filter(friend => 
+      !userIdsWithConversations.has(friend.id)
+    ).map(friend => ({
+      id: friend.id,
+      name: friend.name,
+      avatar: getDisplayAvatar(friend),
+      email: friend.email,
+      lastMessage: 'Start a conversation',
+      time: '',
+      unread: 0,
+      online: friend.online,
+      isGroup: false,
+      isFriendOnly: true
+    }))
+    
+    return [...processedConversations, ...friendsWithoutConversations]
+  }
 
   const handleAddFriend = async () => {
     if (!friendEmail.trim()) {
@@ -74,13 +165,21 @@ export default function Messages() {
         const convData = await convResponse.json()
         
         if (convResponse.ok) {
-          setConversations(convData.conversations || [])
+          // Process conversations to ensure proper avatar display
+          const processedConversations = (convData.conversations || []).map(conv => ({
+            ...conv,
+            avatar: getDisplayAvatar(conv)
+          }))
+          setConversations(processedConversations)
           // Auto-select the new conversation
-          const newConv = convData.conversations?.find(c => c.id === data.friend.id)
+          const newConv = processedConversations?.find(c => c.id === data.friend.id)
           if (newConv) {
             setActiveConversation(newConv)
           }
         }
+        
+        // Refresh friends list
+        fetchFriends()
         
         // Reset form
         setFriendEmail('')
@@ -94,6 +193,97 @@ export default function Messages() {
       alert('Failed to add friend')
     } finally {
       setAddingFriend(false)
+    }
+  }
+
+  // Fetch friends from backend
+  const fetchFriends = async () => {
+    try {
+      setFriendsLoading(true)
+      
+      // Get Supabase session for auth token
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers = {
+        'Content-Type': 'application/json',
+      }
+      
+      // Add auth token if available
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      
+      const response = await fetch('http://localhost:4002/api/friends', {
+        headers
+      })
+      const data = await response.json()
+      
+      if (response.ok) {
+        setFriends(data.friends || [])
+      } else {
+        console.error('Failed to fetch friends:', data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching friends:', error)
+    } finally {
+      setFriendsLoading(false)
+    }
+  }
+
+  // Start conversation with a friend
+  const handleStartConversation = async (friend) => {
+    try {
+      // Get Supabase session for auth token
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers = {
+        'Content-Type': 'application/json',
+      }
+      
+      // Add auth token if available
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      
+      // Create conversation with the friend
+      const response = await fetch('http://localhost:4002/api/friends/add', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ userId: friend.id })
+      })
+
+      const data = await response.json()
+
+      // Refresh conversations to get the updated list
+      const convResponse = await fetch('http://localhost:4002/api/messages/conversations', {
+        headers
+      })
+      const convData = await convResponse.json()
+      
+      if (convResponse.ok) {
+        // Process conversations to ensure proper avatar display
+        const processedConversations = (convData.conversations || []).map(conv => ({
+          ...conv,
+          avatar: getDisplayAvatar(conv)
+        }))
+        setConversations(processedConversations)
+        
+        // Find and select the conversation with this friend
+        const friendConv = processedConversations?.find(c => 
+          c.name === friend.name && !c.isGroup
+        )
+        
+        if (friendConv) {
+          setActiveConversation(friendConv)
+        } else {
+          alert('Could not find or create conversation with this friend')
+        }
+      } else {
+        alert('Failed to create conversation: ' + (convData.error || 'Unknown error'))
+      }
+    } catch (error) {
+      console.error('Error starting conversation:', error)
+      alert('Failed to start conversation: ' + error.message)
     }
   }
 
@@ -121,10 +311,15 @@ export default function Messages() {
         const data = await response.json()
         
         if (response.ok) {
-          setConversations(data.conversations || [])
+          // Process conversations to ensure proper avatar display
+          const processedConversations = (data.conversations || []).map(conv => ({
+            ...conv,
+            avatar: getDisplayAvatar(conv)
+          }))
+          setConversations(processedConversations)
           // Auto-select first conversation if none selected
-          if (!activeConversation && data.conversations?.length > 0) {
-            setActiveConversation(data.conversations[0])
+          if (!activeConversation && processedConversations?.length > 0) {
+            setActiveConversation(processedConversations[0])
           }
         } else {
           console.error('Failed to fetch conversations:', data.error)
@@ -137,7 +332,31 @@ export default function Messages() {
     }
 
     fetchConversations()
+    fetchFriends()
   }, [])
+
+  // Pick up a "message this friend" handoff coming from the Friends page.
+  // When the user clicks "Message" on a friend card there, we stash the
+  // friend's id in localStorage and navigate here. Once friends/conversations
+  // have loaded, open the existing conversation with them, or start a new one.
+  useEffect(() => {
+    const pendingFriendId = localStorage.getItem('openConversationWithUserId')
+    if (!pendingFriendId) return
+    if (friendsLoading || conversationsLoading) return
+
+    localStorage.removeItem('openConversationWithUserId')
+
+    const existingConv = conversations.find(c => c.id === pendingFriendId)
+    if (existingConv) {
+      setActiveConversation(existingConv)
+      return
+    }
+
+    const friend = friends.find(f => f.id === pendingFriendId)
+    if (friend) {
+      handleStartConversation(friend)
+    }
+  }, [friends, conversations, friendsLoading, conversationsLoading])
 
   // Fetch messages when conversation changes
   useEffect(() => {
@@ -179,20 +398,110 @@ export default function Messages() {
     fetchMessages()
   }, [activeConversation])
 
+  // Initialize chat socket client
+  useEffect(() => {
+    if (user?.id) {
+      chatSocketClient.initialize(user.id)
+      
+      // Set up real-time message handling
+      chatSocketClient.onMessageReceived = (data) => {
+        console.log('Real-time message received:', data)
+        if (data.conversationId === activeConversation?.id) {
+          setMessages(prev => [...prev, {
+            id: Date.now(),
+            sender: data.senderName,
+            senderId: data.senderId,
+            text: data.message,
+            time: formatTime(new Date(data.timestamp)),
+            isMine: data.senderId === user.id
+          }])
+        }
+      }
+      
+      // Set up typing indicators
+      chatSocketClient.onUserTyping = (data) => {
+        if (data.conversationId === activeConversation?.id && data.userId !== user.id) {
+          setTypingUsers(prev => new Map(prev).set(data.userId, data.userName))
+        }
+      }
+      
+      chatSocketClient.onUserStoppedTyping = (data) => {
+        if (data.conversationId === activeConversation?.id) {
+          setTypingUsers(prev => {
+            const newMap = new Map(prev)
+            newMap.delete(data.userId)
+            return newMap
+          })
+        }
+      }
+      
+      // Set up online status updates
+      chatSocketClient.onUserOnline = (data) => {
+        console.log('User came online:', data.userId)
+        setConversations(prev => prev.map(conv => {
+          if (conv.id === data.userId) {
+            return { ...conv, online: true }
+          }
+          return conv
+        }))
+      }
+      
+      chatSocketClient.onUserOffline = (data) => {
+        console.log('User went offline:', data.userId)
+        setConversations(prev => prev.map(conv => {
+          if (conv.id === data.userId) {
+            return { ...conv, online: false }
+          }
+          return conv
+        }))
+      }
+      
+      return () => {
+        chatSocketClient.disconnect()
+      }
+    }
+  }, [user?.id])
+
+  // Join/leave conversation rooms
+  useEffect(() => {
+    if (activeConversation?.id && user?.id) {
+      chatSocketClient.joinConversation(activeConversation.id)
+      
+      return () => {
+        chatSocketClient.leaveConversation(activeConversation.id)
+      }
+    }
+  }, [activeConversation?.id, user?.id])
+
   const handleSendMessage = async () => {
     if (!message.trim() || !activeConversation) return
 
     try {
       setIsLoading(true)
       
-      // Get Supabase session for auth token
+      // Get user name for real-time message
+      const userName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'You'
+      
+      // If this is a temporary conversation, don't allow sending yet
+      if (activeConversation.isTemporary) {
+        alert('Please start a proper conversation first by selecting an existing conversation')
+        setMessage('')
+        setIsLoading(false)
+        return
+      }
+      
+      const conversationId = activeConversation.id
+      
+      // Send via Socket.IO for real-time delivery
+      chatSocketClient.sendMessage(conversationId, message, userName)
+      
+      // Save to database via API
       const { data: { session } } = await supabase.auth.getSession()
       
       const headers = {
         'Content-Type': 'application/json',
       }
       
-      // Add auth token if available
       if (session?.access_token) {
         headers['Authorization'] = `Bearer ${session.access_token}`
       }
@@ -201,7 +510,7 @@ export default function Messages() {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          conversationId: activeConversation.id,
+          conversationId: conversationId,
           text: message
         })
       })
@@ -209,16 +518,17 @@ export default function Messages() {
       const data = await response.json()
 
       if (response.ok) {
+        // Add the message locally (will also be received via Socket.IO)
         setMessages(prev => [...prev, data.message])
         setMessage('')
         setIsTyping(false)
       } else {
-        console.error('Failed to send message:', data.error)
-        alert('Failed to send message')
+        console.error('Failed to save message to database:', data.error)
+        alert('Failed to send message: ' + (data.error || 'Unknown error'))
       }
     } catch (error) {
       console.error('Error sending message:', error)
-      alert('Failed to send message')
+      alert('Failed to send message: ' + error.message)
     } finally {
       setIsLoading(false)
     }
@@ -234,14 +544,30 @@ export default function Messages() {
   const handleInputChange = (e) => {
     setMessage(e.target.value)
     
-    // Simulate typing indicator for demo
-    if (!isTyping && e.target.value.length > 0) {
-      setIsTyping(true)
-      setTimeout(() => setIsTyping(false), 2000)
+    // Send typing indicator via Socket.IO
+    if (activeConversation && user) {
+      const userName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'User'
+      
+      if (e.target.value.length > 0) {
+        chatSocketClient.startTyping(activeConversation.id, userName)
+        
+        // Clear previous timeout
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current)
+        }
+        
+        // Auto-stop typing after 2 seconds of no input
+        typingTimeoutRef.current = setTimeout(() => {
+          chatSocketClient.stopTyping(activeConversation.id)
+        }, 2000)
+      } else {
+        chatSocketClient.stopTyping(activeConversation.id)
+      }
     }
   }
 
   const selectedConversation = activeConversation || conversations[0]
+  const displayAvatar = selectedConversation ? getDisplayAvatar(selectedConversation) : '?'
   const [currentUserId, setCurrentUserId] = useState(user?.id || 'user-1')
   const [selectedUser, setSelectedUser] = useState(user?.id || 'user-1')
 
@@ -451,11 +777,11 @@ export default function Messages() {
             </button>
           </div>
           <div className="conversations-list">
-            {conversationsLoading ? (
+            {conversationsLoading || friendsLoading ? (
               <div className="conversations-loading">
                 <div className="loading-spinner">Loading conversations...</div>
               </div>
-            ) : conversations.length === 0 ? (
+            ) : combinedChatList().length === 0 ? (
               <div className="conversations-empty">
                 <div className="conversations-empty-icon">💬</div>
                 <h3>No conversations yet</h3>
@@ -468,25 +794,25 @@ export default function Messages() {
                 </button>
               </div>
             ) : (
-              conversations.map(conv => (
+              combinedChatList().map(item => (
                 <div
-                  key={conv.id}
-                  className={`conversation-item ${activeConversation?.id === conv.id ? 'conversation-item-active' : ''}`}
-                  onClick={() => setActiveConversation(conv)}
+                  key={item.id}
+                  className={`conversation-item ${activeConversation?.id === item.id ? 'conversation-item-active' : ''} ${item.isFriendOnly ? 'conversation-item-friend' : ''}`}
+                  onClick={() => item.isFriendOnly ? handleStartConversation(item) : setActiveConversation(item)}
                 >
                   <div className="conversation-avatar">
-                    {conv.isGroup ? '👥' : conv.avatar}
-                    {conv.online && !conv.isGroup && <span className="conversation-status-online"></span>}
+                    {item.isGroup ? '👥' : <AvatarDisplay value={item.avatar} />}
+                    {item.online && !item.isGroup && <span className="conversation-status-online"></span>}
                   </div>
                   <div className="conversation-info">
                     <div className="conversation-header">
-                      <span className="conversation-name">{conv.name}</span>
-                      <span className="conversation-time">{conv.time}</span>
+                      <span className="conversation-name">{item.name}</span>
+                      <span className="conversation-time">{item.time}</span>
                     </div>
                     <div className="conversation-preview">
-                      <span className="conversation-message">{conv.lastMessage}</span>
-                      {conv.unread > 0 && (
-                        <span className="conversation-unread">{conv.unread}</span>
+                      <span className="conversation-message">{item.lastMessage}</span>
+                      {item.unread > 0 && (
+                        <span className="conversation-unread">{item.unread}</span>
                       )}
                     </div>
                   </div>
@@ -503,7 +829,7 @@ export default function Messages() {
               <div className="messages-chat-header">
                 <div className="messages-chat-info">
                   <div className="messages-chat-avatar">
-                    {selectedConversation.avatar}
+                    <AvatarDisplay value={displayAvatar} />
                     {selectedConversation.online && <span className="messages-chat-status-online"></span>}
                   </div>
                   <div>
@@ -542,8 +868,11 @@ export default function Messages() {
                     </div>
                   ))
                 )}
-                {isTyping && (
+                {typingUsers.size > 0 && (
                   <div className="chat-message typing-indicator">
+                    <div className="typing-text">
+                      {Array.from(typingUsers.values()).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
+                    </div>
                     <div className="typing-dots">
                       <span></span>
                       <span></span>
@@ -628,7 +957,7 @@ export default function Messages() {
             ) : (
               <div className="audio-call-container">
                 <div className="audio-call-avatar">
-                  {selectedConversation?.avatar}
+                  <AvatarDisplay value={displayAvatar} />
                 </div>
                 <h2>{selectedConversation?.name}</h2>
                 <p className="call-duration">{formatCallDuration(callDuration)}</p>
