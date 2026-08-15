@@ -45,6 +45,24 @@ export function AuthProvider({ children }) {
           setIsAuthenticated(true)
           localStorage.setItem('isAuthenticated', 'true')
           localStorage.setItem('user', JSON.stringify(userData))
+          
+          // Update user profile in backend (non-blocking)
+          fetch('http://localhost:4002/api/auth/update-profile', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: userData.id,
+              firstName: userData.firstName,
+              lastName: userData.lastName,
+              avatarUrl: userData.avatar
+            })
+          }).then(response => {
+            console.log('Profile update response:', response.status)
+          }).catch(profileError => {
+            console.error('Failed to update profile:', profileError)
+          })
         } else {
           // No valid session, clear localStorage
           setUser(null)
@@ -79,6 +97,24 @@ export function AuthProvider({ children }) {
         setIsAuthenticated(true)
         localStorage.setItem('isAuthenticated', 'true')
         localStorage.setItem('user', JSON.stringify(userData))
+        
+        // Update user profile in backend (non-blocking)
+        fetch('http://localhost:4002/api/auth/update-profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: userData.id,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            avatarUrl: userData.avatar
+          })
+        }).then(response => {
+          console.log('Profile update response:', response.status)
+        }).catch(profileError => {
+          console.error('Failed to update profile:', profileError)
+        })
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
         setIsAuthenticated(false)
@@ -115,6 +151,24 @@ export function AuthProvider({ children }) {
       setIsAuthenticated(true)
       localStorage.setItem('isAuthenticated', 'true')
       localStorage.setItem('user', JSON.stringify(userData))
+      
+      // Update user profile in backend (non-blocking)
+      fetch('http://localhost:4002/api/auth/update-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userData.id,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          avatarUrl: userData.avatar
+        })
+      }).then(response => {
+        console.log('Profile update response:', response.status)
+      }).catch(profileError => {
+        console.error('Failed to update profile:', profileError)
+      })
       
       return { success: true, user: userData }
     } catch (error) {

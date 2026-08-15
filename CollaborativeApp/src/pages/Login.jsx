@@ -50,7 +50,7 @@ export default function Login() {
     setIsLoading(true)
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4005'
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4002'
       
       const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: 'POST',
