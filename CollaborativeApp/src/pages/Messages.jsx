@@ -6,6 +6,7 @@ import ProtectedRoute from '../components/ProtectedRoute'
 import webrtcClient from '../utils/webrtc'
 import chatSocketClient from '../utils/chatSocket'
 import { useAuth } from '../context/AuthContext'
+import { BookOpen } from 'lucide-react'
 
 export default function Messages() {
   const { user } = useAuth()
@@ -753,14 +754,23 @@ export default function Messages() {
       <div className="page-root">
         <header className="page-header page-header-compact">
           <div className="page-header-brand">
-            <a href="#/" className="page-header-logo">📚</a>
-            <a href="#/" className="page-header-title">Messages</a>
+            <a href="#/" className="page-header-logo">
+              <BookOpen size={24} />
+            </a>
+            <div className="page-header-brand-text">
+              <a href="#/" className="page-header-title">CollaborativeApp</a>
+              <span className="page-header-current">Messages</span>
+            </div>
           </div>
           <nav className="page-header-nav">
-            <a href="#/" className="btn btn-ghost btn-sm">Dashboard</a>
+            <a href="#/dashboard" className="btn btn-ghost btn-sm">Dashboard</a>
             <a href="#/browse" className="btn btn-ghost btn-sm">Browse Rooms</a>
+            <a href="#/create" className="btn btn-primary btn-sm">Create Room</a>
+            <a href="#/friends" className="btn btn-ghost btn-sm">Friends</a>
+            <a href="#/calendar" className="btn btn-ghost btn-sm">Calendar</a>
             <ThemeToggle />
             <a href="#/profile" className="btn btn-ghost btn-sm">Profile</a>
+            <a href="#/settings" className="btn btn-ghost btn-sm">Settings</a>
           </nav>
         </header>
 

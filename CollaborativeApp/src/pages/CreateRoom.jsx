@@ -1,6 +1,7 @@
 import '../styles/pages.css'
 import ThemeToggle from '../components/ThemeToggle'
 import ProtectedRoute from '../components/ProtectedRoute'
+import { BookOpen } from 'lucide-react'
 
 export default function CreateRoom(){
   return (
@@ -8,13 +9,23 @@ export default function CreateRoom(){
       <div className="page-root">
         <header className="page-header">
           <div className="page-header-brand">
-            <a href="#/" className="page-header-logo">📚</a>
-            <a href="#/" className="page-header-title">CollaborativeApp</a>
+            <a href="#/" className="page-header-logo">
+              <BookOpen size={24} />
+            </a>
+            <div className="page-header-brand-text">
+              <a href="#/" className="page-header-title">CollaborativeApp</a>
+              <span className="page-header-current">Create Room</span>
+            </div>
           </div>
           <nav className="page-header-nav">
+            <a href="#/dashboard" className="btn btn-ghost btn-sm">Dashboard</a>
             <a href="#/browse" className="btn btn-ghost btn-sm">Browse Rooms</a>
+            <a href="#/friends" className="btn btn-ghost btn-sm">Friends</a>
+            <a href="#/messages" className="btn btn-ghost btn-sm">Messages</a>
+            <a href="#/calendar" className="btn btn-ghost btn-sm">Calendar</a>
             <ThemeToggle />
-            <a href="#/" className="btn btn-ghost btn-sm">Back to Home</a>
+            <a href="#/profile" className="btn btn-ghost btn-sm">Profile</a>
+            <a href="#/settings" className="btn btn-ghost btn-sm">Settings</a>
           </nav>
         </header>
 

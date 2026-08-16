@@ -2,6 +2,7 @@ import { useState } from 'react'
 import '../styles/pages.css'
 import ThemeToggle from '../components/ThemeToggle'
 import ProtectedRoute from '../components/ProtectedRoute'
+import { BookOpen } from 'lucide-react'
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -97,15 +98,23 @@ export default function Calendar() {
       <div className="page-root">
         <header className="page-header">
           <div className="page-header-brand">
-            <a href="#/" className="page-header-logo">📚</a>
-            <a href="#/" className="page-header-title">CollaborativeApp</a>
+            <a href="#/" className="page-header-logo">
+              <BookOpen size={24} />
+            </a>
+            <div className="page-header-brand-text">
+              <a href="#/" className="page-header-title">CollaborativeApp</a>
+              <span className="page-header-current">Calendar</span>
+            </div>
           </div>
           <nav className="page-header-nav">
-            <a href="#/" className="btn btn-ghost btn-sm">Dashboard</a>
+            <a href="#/dashboard" className="btn btn-ghost btn-sm">Dashboard</a>
             <a href="#/browse" className="btn btn-ghost btn-sm">Browse Rooms</a>
             <a href="#/create" className="btn btn-primary btn-sm">Create Room</a>
+            <a href="#/friends" className="btn btn-ghost btn-sm">Friends</a>
+            <a href="#/messages" className="btn btn-ghost btn-sm">Messages</a>
             <ThemeToggle />
             <a href="#/profile" className="btn btn-ghost btn-sm">Profile</a>
+            <a href="#/settings" className="btn btn-ghost btn-sm">Settings</a>
           </nav>
         </header>
 

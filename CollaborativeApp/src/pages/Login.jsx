@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import '../styles/auth.css'
+import { Mail, Lock, Eye, EyeOff, Globe, GitBranch } from 'lucide-react'
 import ThemeToggle from '../components/ThemeToggle'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../config/supabase'
@@ -133,7 +134,9 @@ export default function Login() {
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-header">
-            <a href="#/" className="auth-logo">📚</a>
+            <a href="#/" className="auth-logo">
+              <Mail size={32} />
+            </a>
             <h1 className="auth-title">Welcome Back</h1>
             <p className="auth-subtitle">Sign in to continue your collaborative learning journey</p>
           </div>
@@ -151,7 +154,9 @@ export default function Login() {
                 <span className="auth-label-required">*</span>
               </label>
               <div className="auth-input-wrapper">
-                <span className="auth-input-icon">📧</span>
+                <span className="auth-input-icon">
+                  <Mail size={20} />
+                </span>
                 <input
                   type="email"
                   name="email"
@@ -171,7 +176,9 @@ export default function Login() {
                 <span className="auth-label-required">*</span>
               </label>
               <div className="auth-input-wrapper">
-                <span className="auth-input-icon">🔒</span>
+                <span className="auth-input-icon">
+                  <Lock size={20} />
+                </span>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   name="password"
@@ -188,7 +195,7 @@ export default function Login() {
                   onClick={togglePasswordVisibility}
                   disabled={isLoading}
                 >
-                  {showPassword ? '👁️' : '👁️‍🗨️'}
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
@@ -236,7 +243,9 @@ export default function Login() {
                 onClick={() => handleSocialLogin('google')}
                 disabled={isLoading}
               >
-                <span className="auth-social-icon">🔍</span>
+                <span className="auth-social-icon">
+                  <Globe size={20} />
+                </span>
                 Google
               </button>
               <button
@@ -245,7 +254,9 @@ export default function Login() {
                 onClick={() => handleSocialLogin('github')}
                 disabled={isLoading}
               >
-                <span className="auth-social-icon">🐙</span>
+                <span className="auth-social-icon">
+                  <GitBranch size={20} />
+                </span>
                 GitHub
               </button>
             </div>

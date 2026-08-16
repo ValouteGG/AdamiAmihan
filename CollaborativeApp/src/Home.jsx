@@ -1,6 +1,4 @@
 import './styles/home.css'
-import logo from './assets/logo.svg'
-import hero from './assets/hero-student.svg'
 import ThemeToggle from './components/ThemeToggle'
 import { useAuth } from './context/AuthContext'
 
@@ -11,7 +9,7 @@ function Home() {
     <div className="home-root">
       <header className="site-header">
         <div className="brand">
-          <img src={logo} alt="Logo" className="logo" />
+          <div className="logo">📚</div>
           <div>
             <h1 className="title">CollaborativeApp</h1>
             <div className="tag">Study together • Share faster • Learn smarter</div>
@@ -39,7 +37,7 @@ function Home() {
         {isAuthenticated ? (
           <section className="hero student-hero">
             <div className="hero-content">
-              <h2>Welcome back, {user?.firstName || user?.email?.split('@')[0]}! 👋</h2>
+              <h2>Welcome back, {user?.firstName || user?.email?.split('@')[0]}!</h2>
               <p className="lead">Ready to continue your learning journey? Jump back into your study rooms or check your progress.</p>
               <div className="cta-row">
                 <a href="#/dashboard" className="btn primary">Go to Dashboard</a>
@@ -47,7 +45,7 @@ function Home() {
               </div>
             </div>
             <div className="hero-visual">
-              <img src={hero} alt="Students collaborating illustration" />
+              <div className="hero-icon">📚</div>
             </div>
           </section>
         ) : (
@@ -66,7 +64,7 @@ function Home() {
               </div>
             </div>
             <div className="hero-visual">
-              <img src={hero} alt="Students collaborating illustration" />
+              <div className="hero-icon">👥</div>
             </div>
           </section>
         )}
@@ -75,18 +73,22 @@ function Home() {
           <h3>Student-focused building blocks</h3>
           <div className="feature-grid">
             <article className="feature">
+              <div className="feature-icon">👥</div>
               <h4>Live Study Rooms</h4>
               <p>Create temporary rooms for group sessions with synced cursors and voice chat.</p>
             </article>
             <article className="feature">
+              <div className="feature-icon">📝</div>
               <h4>Shared Notes</h4>
               <p>Collaborative documents with version history and highlights.</p>
             </article>
             <article className="feature">
+              <div className="feature-icon">📅</div>
               <h4>Assignments & Tasks</h4>
               <p>Track deadlines, assign work, and get reminders.</p>
             </article>
             <article className="feature">
+              <div className="feature-icon">🏆</div>
               <h4>Study Gamification</h4>
               <p>Earn badges, streaks, and friendly leaderboards to stay motivated.</p>
             </article>
