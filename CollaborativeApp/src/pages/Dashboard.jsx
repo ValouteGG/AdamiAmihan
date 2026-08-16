@@ -1,45 +1,76 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { BookOpen, Users, Clock, Award, MessageSquare, Paperclip, Mail, Trophy, Plus, Search, User, Timer, Palette, Layout, Calendar } from 'lucide-react'
 import '../styles/pages.css'
 import ThemeToggle from '../components/ThemeToggle'
 import ProtectedRoute from '../components/ProtectedRoute'
+import { supabase } from '../config/supabase'
 
 export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false)
   
-  // Mock data for demo
-  const [stats] = useState({
-    totalRooms: 12,
-    activeRooms: 3,
-    totalHours: 156,
-    streak: 7
+  // Real data state
+  const [stats, setStats] = useState({
+    totalRooms: 0,
+    activeRooms: 0,
+    totalHours: 0,
+    streak: 0
   })
 
-  const [recentRooms] = useState([
-    { id: 1, name: 'Calculus Study Group', subject: 'Mathematics', participants: 8, lastActive: '2 hours ago', isActive: true },
-    { id: 2, name: 'Physics Lab Partners', subject: 'Physics', participants: 4, lastActive: '1 day ago', isActive: false },
-    { id: 3, name: 'Literature Discussion', subject: 'Literature', participants: 6, lastActive: '3 days ago', isActive: false },
-  ])
+  const [recentRooms, setRecentRooms] = useState([])
+  const [upcomingSessions, setUpcomingSessions] = useState([])
+  const [recentActivity, setRecentActivity] = useState([])
+  const [dataLoading, setDataLoading] = useState(true)
 
-  const [upcomingSessions] = useState([
-    { id: 1, title: 'Chapter 5 Review', room: 'Calculus Study Group', date: 'Today', time: '3:00 PM', type: 'study' },
-    { id: 2, title: 'Lab Report Discussion', room: 'Physics Lab Partners', date: 'Tomorrow', time: '10:00 AM', type: 'collaboration' },
-    { id: 3, title: 'Essay Workshop', room: 'Literature Discussion', date: 'Friday', time: '2:00 PM', type: 'workshop' },
-  ])
+  // Fetch real data from backend
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setDataLoading(true)
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        const headers = {
+          'Content-Type': 'application/json',
+        }
+        
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`
+        }
 
-  const [recentActivity] = useState([
-    { id: 1, type: 'message', text: 'Alice sent a message in Calculus Study Group', time: '1 hour ago' },
-    { id: 2, type: 'upload', text: 'Bob uploaded notes.pdf to Physics Lab Partners', time: '3 hours ago' },
-    { id: 3, type: 'invite', text: 'Carol invited you to Chemistry Study Group', time: '1 day ago' },
-    { id: 4, type: 'achievement', text: 'You earned the "Week Warrior" badge!', time: '2 days ago' },
-  ])
+        // Fetch dashboard data - use fallback if endpoint doesn't exist
+        try {
+          const response = await fetch('http://localhost:4002/api/dashboard', {
+            headers
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            setStats(data.stats || { totalRooms: 0, activeRooms: 0, totalHours: 0, streak: 0 })
+            setRecentRooms(data.recentRooms || [])
+            setUpcomingSessions(data.upcomingSessions || [])
+            setRecentActivity(data.recentActivity || [])
+          } else {
+            console.log('Dashboard endpoint not available, using empty state')
+          }
+        } catch (apiError) {
+          console.log('Dashboard API call failed, using empty state:', apiError.message)
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error)
+      } finally {
+        setDataLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [])
 
   const getActivityIcon = (type) => {
     switch (type) {
-      case 'message': return '💬'
-      case 'upload': return '📎'
-      case 'invite': return '📨'
-      case 'achievement': return '🏆'
-      default: return '📌'
+      case 'message': return <MessageSquare size={20} />
+      case 'upload': return <Paperclip size={20} />
+      case 'invite': return <Mail size={20} />
+      case 'achievement': return <Trophy size={20} />
+      default: return <BookOpen size={20} />
     }
   }
 
@@ -57,14 +88,22 @@ export default function Dashboard() {
       <div className="page-root">
         <header className="page-header">
           <div className="page-header-brand">
-            <a href="#/" className="page-header-logo">📚</a>
-            <a href="#/" className="page-header-title">CollaborativeApp</a>
+            <a href="#/" className="page-header-logo">
+              <BookOpen size={24} />
+            </a>
+            <div className="page-header-brand-text">
+              <a href="#/" className="page-header-title">CollaborativeApp</a>
+              <span className="page-header-current">Dashboard</span>
+            </div>
           </div>
           <nav className="page-header-nav">
             <a href="#/browse" className="btn btn-ghost btn-sm">Browse Rooms</a>
             <a href="#/create" className="btn btn-primary btn-sm">Create Room</a>
-            <a href="#/profile" className="btn btn-ghost btn-sm">Profile</a>
+            <a href="#/friends" className="btn btn-ghost btn-sm">Friends</a>
+            <a href="#/messages" className="btn btn-ghost btn-sm">Messages</a>
+            <a href="#/calendar" className="btn btn-ghost btn-sm">Calendar</a>
             <ThemeToggle />
+            <a href="#/profile" className="btn btn-ghost btn-sm">Profile</a>
             <a href="#/settings" className="btn btn-ghost btn-sm">Settings</a>
           </nav>
         </header>
@@ -73,39 +112,48 @@ export default function Dashboard() {
         <div className="page-inner dashboard-inner">
           <div className="dashboard-header">
             <div>
-              <h1 className="page-title">Welcome back! 👋</h1>
+              <h1 className="page-title">Welcome back!</h1>
               <p className="page-subtitle">Here's what's happening with your study groups</p>
             </div>
             <button className="btn btn-primary" onClick={() => window.location.hash = '#/create'}>
-              + Create Room
+              <Plus size={16} className="btn-icon" />
+              Create Room
             </button>
           </div>
 
           {/* Stats Grid */}
           <div className="stats-grid">
             <div className="stat-card">
-              <div className="stat-icon">📚</div>
+              <div className="stat-icon">
+                <BookOpen size={24} />
+              </div>
               <div className="stat-info">
                 <div className="stat-value">{stats.totalRooms}</div>
                 <div className="stat-label">Total Rooms</div>
               </div>
             </div>
             <div className="stat-card">
-              <div className="stat-icon">🟢</div>
+              <div className="stat-icon">
+                <Users size={24} />
+              </div>
               <div className="stat-info">
                 <div className="stat-value">{stats.activeRooms}</div>
                 <div className="stat-label">Active Rooms</div>
               </div>
             </div>
             <div className="stat-card">
-              <div className="stat-icon">⏱️</div>
+              <div className="stat-icon">
+                <Clock size={24} />
+              </div>
               <div className="stat-info">
                 <div className="stat-value">{stats.totalHours}h</div>
                 <div className="stat-label">Study Hours</div>
               </div>
             </div>
             <div className="stat-card">
-              <div className="stat-icon">🔥</div>
+              <div className="stat-icon">
+                <Award size={24} />
+              </div>
               <div className="stat-info">
                 <div className="stat-value">{stats.streak}</div>
                 <div className="stat-label">Day Streak</div>
@@ -121,30 +169,40 @@ export default function Dashboard() {
                 <a href="#/browse" className="btn btn-sm btn-ghost">View All</a>
               </div>
               <div className="room-list">
-                {recentRooms.map(room => (
-                  <div key={room.id} className="room-card" onClick={() => window.location.hash = '#/room'}>
-                    <div className="room-info">
-                      <div className="room-name">{room.name}</div>
-                      <div className="room-details">
-                        <span className="room-subject">{room.subject}</span>
-                        <span className="room-participants">
-                          <span className="room-participants-icon">👥</span>
-                          {room.participants}
-                        </span>
-                        <span className="room-status">
-                          {room.isActive ? (
-                            <span className="room-status-active">Active now</span>
-                          ) : (
-                            <span>{room.lastActive}</span>
-                          )}
-                        </span>
+                {dataLoading ? (
+                  <div className="loading-state">Loading rooms...</div>
+                ) : recentRooms.length === 0 ? (
+                  <div className="empty-state">
+                    <BookOpen size={48} className="empty-icon" />
+                    <h3>No rooms yet</h3>
+                    <p>Create your first study room to get started</p>
+                  </div>
+                ) : (
+                  recentRooms.map(room => (
+                    <div key={room.id} className="room-card" onClick={() => window.location.hash = '#/room'}>
+                      <div className="room-info">
+                        <div className="room-name">{room.name}</div>
+                        <div className="room-details">
+                          <span className="room-subject">{room.subject}</span>
+                          <span className="room-participants">
+                            <Users size={16} className="room-participants-icon" />
+                            {room.participants}
+                          </span>
+                          <span className="room-status">
+                            {room.isActive ? (
+                              <span className="room-status-active">Active now</span>
+                            ) : (
+                              <span>{room.lastActive}</span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="room-actions">
+                        <button className="btn btn-sm btn-primary">Join</button>
                       </div>
                     </div>
-                    <div className="room-actions">
-                      <button className="btn btn-sm btn-primary">Join</button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
@@ -155,20 +213,30 @@ export default function Dashboard() {
                 <a href="#/calendar" className="btn btn-sm btn-ghost">View Calendar</a>
               </div>
               <div className="session-list">
-                {upcomingSessions.map(session => (
-                  <div key={session.id} className="session-card">
-                    <div className="session-date">
-                      <div className="session-day">{session.date}</div>
-                      <div className="session-time">{session.time}</div>
-                    </div>
-                    <div className="session-info">
-                      <div className="session-title">{session.title}</div>
-                      <div className="session-room">{session.room}</div>
-                      <span className={`badge ${getSessionTypeColor(session.type)}`}>{session.type}</span>
-                    </div>
-                    <button className="btn btn-sm btn-ghost">→</button>
+                {dataLoading ? (
+                  <div className="loading-state">Loading sessions...</div>
+                ) : upcomingSessions.length === 0 ? (
+                  <div className="empty-state">
+                    <Calendar size={48} className="empty-icon" />
+                    <h3>No upcoming sessions</h3>
+                    <p>Schedule your first study session</p>
                   </div>
-                ))}
+                ) : (
+                  upcomingSessions.map(session => (
+                    <div key={session.id} className="session-card">
+                      <div className="session-date">
+                        <div className="session-day">{session.date}</div>
+                        <div className="session-time">{session.time}</div>
+                      </div>
+                      <div className="session-info">
+                        <div className="session-title">{session.title}</div>
+                        <div className="session-room">{session.room}</div>
+                        <span className={`badge ${getSessionTypeColor(session.type)}`}>{session.type}</span>
+                      </div>
+                      <button className="btn btn-sm btn-ghost">→</button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -179,15 +247,25 @@ export default function Dashboard() {
                 <a href="#/notifications" className="btn btn-sm btn-ghost">View All</a>
               </div>
               <div className="activity-list">
-                {recentActivity.map(activity => (
-                  <div key={activity.id} className="activity-item">
-                    <div className="activity-icon">{getActivityIcon(activity.type)}</div>
-                    <div className="activity-content">
-                      <div className="activity-text">{activity.text}</div>
-                      <div className="activity-time">{activity.time}</div>
-                    </div>
+                {dataLoading ? (
+                  <div className="loading-state">Loading activity...</div>
+                ) : recentActivity.length === 0 ? (
+                  <div className="empty-state">
+                    <MessageSquare size={48} className="empty-icon" />
+                    <h3>No recent activity</h3>
+                    <p>Your activity will appear here</p>
                   </div>
-                ))}
+                ) : (
+                  recentActivity.map(activity => (
+                    <div key={activity.id} className="activity-item">
+                      <div className="activity-icon">{getActivityIcon(activity.type)}</div>
+                      <div className="activity-content">
+                        <div className="activity-text">{activity.text}</div>
+                        <div className="activity-time">{activity.time}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 

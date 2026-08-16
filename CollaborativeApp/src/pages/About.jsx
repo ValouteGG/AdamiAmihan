@@ -1,6 +1,7 @@
 import '../styles/pages.css'
 import ThemeToggle from '../components/ThemeToggle'
 import { useAuth } from '../context/AuthContext'
+import { BookOpen } from 'lucide-react'
 
 export default function About(){
   const { isAuthenticated } = useAuth()
@@ -9,23 +10,30 @@ export default function About(){
     <div className="page-root">
       <header className="page-header">
         <div className="page-header-brand">
-          <a href="#/" className="page-header-logo">📚</a>
-          <a href="#/" className="page-header-title">CollaborativeApp</a>
+          <a href="#/" className="page-header-logo">
+            <BookOpen size={24} />
+          </a>
+          <div className="page-header-brand-text">
+            <a href="#/" className="page-header-title">CollaborativeApp</a>
+            <span className="page-header-current">About</span>
+          </div>
         </div>
         <nav className="page-header-nav">
+          <a href="#/features" className="btn btn-ghost btn-sm">Features</a>
+          <a href="#/help" className="btn btn-ghost btn-sm">Help</a>
           {isAuthenticated ? (
             <>
               <a href="#/dashboard" className="btn btn-ghost btn-sm">Dashboard</a>
-              <a href="#/profile" className="btn btn-primary btn-sm">Profile</a>
+              <ThemeToggle />
+              <a href="#/profile" className="btn btn-ghost btn-sm">Profile</a>
             </>
           ) : (
             <>
               <a href="#/login" className="btn btn-ghost btn-sm">Sign In</a>
               <a href="#/signup" className="btn btn-primary btn-sm">Sign Up</a>
+              <ThemeToggle />
             </>
           )}
-          <ThemeToggle />
-          <a href="#/" className="btn btn-ghost btn-sm">Back to Home</a>
         </nav>
       </header>
 
