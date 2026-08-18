@@ -194,8 +194,30 @@ export function AuthProvider({ children }) {
     window.location.hash = '#/login'
   }
 
+  const refreshUser = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (session) {
+        const userData = {
+          id: session.user.id,
+          email: session.user.email,
+          firstName: session.user.user_metadata?.first_name || '',
+          lastName: session.user.user_metadata?.last_name || '',
+          avatar: session.user.user_metadata?.avatar || session.user.user_metadata?.first_name?.[0] || session.user.email[0],
+          createdAt: session.user.created_at,
+          confirmedAt: session.user.confirmed_at
+        }
+        setUser(userData)
+        localStorage.setItem('user', JSON.stringify(userData))
+      }
+    } catch (error) {
+      console.error('Error refreshing user data:', error)
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, loginWithUserData, logout, isLoading }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, loginWithUserData, logout, refreshUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   )

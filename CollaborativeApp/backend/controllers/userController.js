@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase');
+const { supabaseServiceRole } = require('../config/supabase');
 
 /**
  * Get user statistics (rooms, sessions, hours)
@@ -71,6 +72,126 @@ const getUserStats = async (req, res) => {
   }
 };
 
+/**
+ * Search users by email or name
+ */
+const searchUsers = async (req, res) => {
+  try {
+    const { query } = req.query;
+    
+    if (!query || query.length < 2) {
+      return res.json({ users: [] });
+    }
+
+    // Use service role client to bypass RLS for user search
+    const client = supabaseServiceRole || supabase;
+    
+    // Search in user_profiles by email or name
+    const { data: profiles, error } = await client
+      .from('user_profiles')
+      .select('*')
+      .or(`email.ilike.%${query}%,first_name.ilike.%${query}%,last_name.ilike.%${query}%`)
+      .limit(10);
+
+    if (error) throw error;
+
+    // Format users
+    const users = profiles?.map(profile => ({
+      id: profile.id,
+      email: profile.email,
+      firstName: profile.first_name,
+      lastName: profile.last_name,
+      avatar: profile.avatar_url
+    })) || [];
+
+    res.json({ users });
+  } catch (error) {
+    console.error('Error searching users:', error);
+    res.status(500).json({ error: 'Failed to search users' });
+  }
+};
+
+/**
+ * Invite user to room
+ */
+const inviteUserToRoom = async (req, res) => {
+  try {
+    const { roomId, userId } = req.body;
+    
+    // Get auth token from header
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized - No token provided' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Get user using the token
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      return res.status(401).json({ error: 'Unauthorized - Invalid token' });
+    }
+
+    const db = supabase.getAuthenticatedClient(token);
+
+    // Use service role client to bypass RLS for participant checks
+    const client = supabaseServiceRole || db;
+    
+    // Check if the inviter is the room owner
+    const { data: participant } = await client
+      .from('room_participants')
+      .select('*')
+      .eq('room_id', roomId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!participant || participant.role !== 'owner') {
+      return res.status(403).json({ error: 'Only room owners can invite users' });
+    }
+
+    // Check if user is already a participant
+    const { data: existingParticipant } = await client
+      .from('room_participants')
+      .select('*')
+      .eq('room_id', roomId)
+      .eq('user_id', userId)
+      .single();
+
+    if (existingParticipant) {
+      return res.status(400).json({ error: 'User is already a member of this room' });
+    }
+    
+    // Add user as participant
+    const { error } = await client
+      .from('room_participants')
+      .insert({
+        room_id: roomId,
+        user_id: userId,
+        role: 'member'
+      });
+
+    if (error) throw error;
+
+    // Get user details for response
+    const { data: userProfile } = await client
+      .from('user_profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    res.json({ 
+      message: 'User invited successfully',
+      user: userProfile
+    });
+  } catch (error) {
+    console.error('Error inviting user to room:', error);
+    res.status(500).json({ error: 'Failed to invite user' });
+  }
+};
+
 module.exports = {
-  getUserStats
+  getUserStats,
+  searchUsers,
+  inviteUserToRoom
 };

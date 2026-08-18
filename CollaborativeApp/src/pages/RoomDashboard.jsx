@@ -16,6 +16,25 @@ export default function RoomDashboard() {
   const [room, setRoom] = useState(null)
   const [roomLoading, setRoomLoading] = useState(true)
   
+  // Schedule form state
+  const [showScheduleForm, setShowScheduleForm] = useState(false)
+  const [scheduleTitle, setScheduleTitle] = useState('')
+  const [scheduleDate, setScheduleDate] = useState('')
+  const [scheduleTime, setScheduleTime] = useState('')
+  const [scheduleDescription, setScheduleDescription] = useState('')
+  const [creatingSchedule, setCreatingSchedule] = useState(false)
+  const [schedules, setSchedules] = useState([])
+  const [schedulesLoading, setSchedulesLoading] = useState(false)
+  
+  // Invite modal state
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [invitingUserId, setInvitingUserId] = useState(null)
+  const [inviteError, setInviteError] = useState(null)
+  const [inviteSuccess, setInviteSuccess] = useState(false)
+  
   // Get room ID from URL hash
   const getRoomIdFromHash = () => {
     const hash = window.location.hash
@@ -75,19 +94,60 @@ export default function RoomDashboard() {
   }, [])
 
   // Fetch participants
+  const fetchParticipants = async () => {
+    if (!room) return
+    
+    try {
+      setParticipantsLoading(true)
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        return
+      }
+
+      const response = await fetch(`http://localhost:4002/api/rooms/${room.id}/participants`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setParticipants(data.participants || [])
+        // Check if current user is owner
+        const { data: { user } } = await supabase.auth.getUser()
+        const currentUser = data.participants?.find(p => p.id === user?.id)
+        setIsOwner(currentUser?.role === 'owner')
+      }
+    } catch (error) {
+      console.error('Error fetching participants:', error)
+    } finally {
+      setParticipantsLoading(false)
+    }
+  }
+
   useEffect(() => {
-    const fetchParticipants = async () => {
+    fetchParticipants()
+  }, [room])
+
+  const [messages, setMessages] = useState([])
+  const [messagesLoading, setMessagesLoading] = useState(false)
+
+  // Fetch messages when room is loaded
+  useEffect(() => {
+    const fetchMessages = async () => {
       if (!room) return
       
       try {
-        setParticipantsLoading(true)
+        setMessagesLoading(true)
         const { data: { session } } = await supabase.auth.getSession()
         
         if (!session?.access_token) {
           return
         }
 
-        const response = await fetch(`http://localhost:4002/api/rooms/${room.id}/participants`, {
+        const response = await fetch(`http://localhost:4002/api/rooms/${room.id}/messages`, {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`
@@ -96,69 +156,95 @@ export default function RoomDashboard() {
 
         if (response.ok) {
           const data = await response.json()
-          setParticipants(data.participants || [])
-          // Check if current user is owner
-          const { data: { user } } = await supabase.auth.getUser()
-          const currentUser = data.participants?.find(p => p.id === user?.id)
-          setIsOwner(currentUser?.role === 'owner')
+          setMessages(data.messages || [])
+        } else {
+          console.error('Failed to fetch messages:', response.status)
         }
       } catch (error) {
-        console.error('Error fetching participants:', error)
+        console.error('Error fetching messages:', error)
       } finally {
-        setParticipantsLoading(false)
+        setMessagesLoading(false)
       }
     }
 
-    fetchParticipants()
+    fetchMessages()
   }, [room])
 
-  const [messages, setMessages] = useState([])
+  // Fetch schedules when room is loaded
+  useEffect(() => {
+    const fetchSchedules = async () => {
+      if (!room) return
+      
+      try {
+        setSchedulesLoading(true)
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!session?.access_token) {
+          return
+        }
 
-  const handleSendMessage = async () => {
-    if (!message.trim()) return
+        const response = await fetch(`http://localhost:4002/api/rooms/${room.id}/schedules`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        })
 
-    const newMessage = {
-      id: messages.length + 1,
-      user: 'You',
-      text: message,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isMine: true
+        if (response.ok) {
+          const data = await response.json()
+          setSchedules(data.schedules || [])
+        } else {
+          console.error('Failed to fetch schedules:', response.status)
+        }
+      } catch (error) {
+        console.error('Error fetching schedules:', error)
+      } finally {
+        setSchedulesLoading(false)
+      }
     }
 
-    setMessages(prev => [...prev, newMessage])
-    setMessage('')
+    fetchSchedules()
+  }, [room])
 
-    // ============================================
-    // BACKEND INTEGRATION PLACEHOLDER
-    // ============================================
-    // Replace this with actual WebSocket or API call
-    // Example:
-    // websocket.send(JSON.stringify({
-    //   type: 'message',
-    //   roomId: room.id,
-    //   message: message
-    // }))
-    
-    console.log('Message sent:', newMessage)
+  const handleSendMessage = async () => {
+    if (!message.trim() || !room) return
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        alert('You must be logged in to send messages')
+        return
+      }
+
+      const response = await fetch(`http://localhost:4002/api/rooms/${room.id}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ text: message })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Add the message locally
+        setMessages(prev => [...prev, data.message])
+        setMessage('')
+      } else {
+        console.error('Failed to send message:', data.error)
+        alert('Failed to send message: ' + (data.error || 'Unknown error'))
+      }
+    } catch (error) {
+      console.error('Error sending message:', error)
+      alert('Failed to send message: ' + error.message)
+    }
   }
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0]
     if (file) {
-      // ============================================
-      // BACKEND INTEGRATION PLACEHOLDER
-      // ============================================
-      // Replace this with actual file upload logic
-      // Example:
-      // const formData = new FormData()
-      // formData.append('file', file)
-      // formData.append('roomId', room.id)
-      // const response = await fetch('/api/rooms/resources', {
-      //   method: 'POST',
-      //   body: formData
-      // })
-      
-      console.log('File upload:', file.name)
       alert('File upload requires backend integration')
     }
   }
@@ -278,22 +364,151 @@ export default function RoomDashboard() {
     }
   }
 
-  const handleInviteUser = async () => {
-    const email = prompt('Enter email address to invite:')
-    if (email) {
-      // ============================================
-      // BACKEND INTEGRATION PLACEHOLDER
-      // ============================================
-      // Replace this with actual API call
-      // Example:
-      // const response = await fetch(`/api/rooms/${room.id}/invite`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email })
-      // })
+  const handleInviteUser = () => {
+    setShowInviteModal(true)
+    setSearchQuery('')
+    setSearchResults([])
+    setInviteError(null)
+    setInviteSuccess(false)
+  }
+
+  const handleSearchUsers = async (query) => {
+    setSearchQuery(query)
+    
+    if (query.length < 2) {
+      setSearchResults([])
+      return
+    }
+
+    try {
+      setSearchLoading(true)
+      const { data: { session } } = await supabase.auth.getSession()
       
-      console.log('Invite sent to:', email)
-      alert('Invitation requires backend integration')
+      if (!session?.access_token) {
+        return
+      }
+
+      const response = await fetch(`http://localhost:4002/api/users/search?query=${encodeURIComponent(query)}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        // Filter out users who are already participants
+        const participantIds = participants.map(p => p.user_id)
+        const availableUsers = data.users.filter(user => 
+          user.id !== room?.created_by && // Don't show room creator
+          !participantIds.includes(user.id) // Don't show existing participants
+        )
+        setSearchResults(availableUsers)
+      }
+    } catch (error) {
+      console.error('Error searching users:', error)
+    } finally {
+      setSearchLoading(false)
+    }
+  }
+
+  const handleInviteUserToRoom = async (userId) => {
+    try {
+      setInvitingUserId(userId)
+      setInviteError(null)
+      setInviteSuccess(false)
+      
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        setInviteError('You must be logged in to invite users')
+        return
+      }
+
+      const response = await fetch(`http://localhost:4002/api/rooms/${room.id}/invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ roomId: room.id, userId })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setInviteSuccess(true)
+        setShowInviteModal(false)
+        setSearchQuery('')
+        setSearchResults([])
+        // Refresh participants
+        fetchParticipants()
+      } else {
+        setInviteError(data.error || 'Failed to invite user')
+      }
+    } catch (error) {
+      console.error('Error inviting user:', error)
+      setInviteError('Failed to invite user: ' + error.message)
+    } finally {
+      setInvitingUserId(null)
+    }
+  }
+
+  const handleCreateSchedule = async () => {
+    if (!scheduleTitle.trim() || !scheduleDate || !scheduleTime) {
+      alert('Please fill in the title, date, and time')
+      return
+    }
+
+    try {
+      setCreatingSchedule(true)
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        alert('You must be logged in to create schedules')
+        return
+      }
+
+      const response = await fetch(`http://localhost:4002/api/rooms/${room.id}/schedules`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          title: scheduleTitle,
+          date: scheduleDate,
+          time: scheduleTime,
+          description: scheduleDescription
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Add the schedule to the list
+        setSchedules(prev => [...prev, data.schedule])
+        
+        // Add the announcement message to chat
+        setMessages(prev => [...prev, data.message])
+        
+        // Reset form
+        setScheduleTitle('')
+        setScheduleDate('')
+        setScheduleTime('')
+        setScheduleDescription('')
+        setShowScheduleForm(false)
+        
+        alert('Schedule created successfully!')
+      } else {
+        console.error('Failed to create schedule:', data.error)
+        alert('Failed to create schedule: ' + (data.error || 'Unknown error'))
+      }
+    } catch (error) {
+      console.error('Error creating schedule:', error)
+      alert('Failed to create schedule: ' + error.message)
+    } finally {
+      setCreatingSchedule(false)
     }
   }
 
@@ -403,7 +618,9 @@ export default function RoomDashboard() {
             {activeTab === 'chat' && (
               <div className="room-chat">
                 <div className="chat-messages">
-                  {messages.length === 0 ? (
+                  {messagesLoading ? (
+                    <div className="loading-state">Loading messages...</div>
+                  ) : messages.length === 0 ? (
                     <div className="empty-state">
                       <p>No messages yet. Start the conversation!</p>
                     </div>
@@ -483,18 +700,98 @@ export default function RoomDashboard() {
 
             {activeTab === 'schedule' && (
               <div className="room-schedule">
-                <h3>Upcoming Sessions</h3>
+                <div className="schedule-header">
+                  <h3>Upcoming Sessions</h3>
+                  {isOwner && (
+                    <button 
+                      className="btn btn-sm btn-primary"
+                      onClick={() => setShowScheduleForm(!showScheduleForm)}
+                    >
+                      {showScheduleForm ? 'Cancel' : '+ New Schedule'}
+                    </button>
+                  )}
+                </div>
+                
+                {showScheduleForm && isOwner && (
+                  <div className="schedule-form">
+                    <div className="form-section">
+                      <div className="form-label">
+                        <span className="form-label-text">Session Title</span>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          placeholder="e.g. Calculus Study Session"
+                          value={scheduleTitle}
+                          onChange={(e) => setScheduleTitle(e.target.value)}
+                        />
+                      </div>
+                      
+                      <div className="form-label">
+                        <span className="form-label-text">Date</span>
+                        <input 
+                          type="date" 
+                          className="form-input" 
+                          value={scheduleDate}
+                          onChange={(e) => setScheduleDate(e.target.value)}
+                        />
+                      </div>
+                      
+                      <div className="form-label">
+                        <span className="form-label-text">Time</span>
+                        <input 
+                          type="time" 
+                          className="form-input" 
+                          value={scheduleTime}
+                          onChange={(e) => setScheduleTime(e.target.value)}
+                        />
+                      </div>
+                      
+                      <div className="form-label">
+                        <span className="form-label-text">Description (optional)</span>
+                        <textarea 
+                          className="form-textarea" 
+                          placeholder="Add details about this session..."
+                          value={scheduleDescription}
+                          onChange={(e) => setScheduleDescription(e.target.value)}
+                          rows={3}
+                        />
+                      </div>
+                      
+                      <div className="form-actions">
+                        <button 
+                          className="btn btn-ghost" 
+                          onClick={() => setShowScheduleForm(false)}
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          className="btn btn-primary" 
+                          onClick={handleCreateSchedule}
+                          disabled={creatingSchedule}
+                        >
+                          {creatingSchedule ? 'Creating...' : 'Create Schedule'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="schedule-list">
-                  {room.schedule && room.schedule.length > 0 ? (
-                    room.schedule.map(session => (
-                      <div key={session.id} className="schedule-item">
+                  {schedulesLoading ? (
+                    <div className="loading-state">Loading schedules...</div>
+                  ) : schedules.length > 0 ? (
+                    schedules.map(schedule => (
+                      <div key={schedule.id} className="schedule-item">
                         <div className="schedule-date">
-                          <div className="schedule-day">{new Date(session.date).getDate()}</div>
-                          <div className="schedule-month">{new Date(session.date).toLocaleString('default', { month: 'short' })}</div>
+                          <div className="schedule-day">{new Date(schedule.date).getDate()}</div>
+                          <div className="schedule-month">{new Date(schedule.date).toLocaleString('default', { month: 'short' })}</div>
                         </div>
                         <div className="schedule-info">
-                          <div className="schedule-title">{session.title}</div>
-                          <div className="schedule-time">{session.time}</div>
+                          <div className="schedule-title">{schedule.title}</div>
+                          <div className="schedule-time">{schedule.time}</div>
+                          {schedule.description && (
+                            <div className="schedule-description">{schedule.description}</div>
+                          )}
                         </div>
                         <button className="btn btn-sm btn-primary">Join</button>
                       </div>
@@ -502,6 +799,14 @@ export default function RoomDashboard() {
                   ) : (
                     <div className="empty-state">
                       <p>No scheduled sessions yet</p>
+                      {isOwner && (
+                        <button 
+                          className="btn btn-primary btn-sm"
+                          onClick={() => setShowScheduleForm(true)}
+                        >
+                          Create First Schedule
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -510,6 +815,89 @@ export default function RoomDashboard() {
           </div>
         </div>
       </div>
+      )}
+
+      {/* Invite Modal */}
+      {showInviteModal && (
+        <div className="modal-overlay" onClick={() => setShowInviteModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Invite Users to {room?.name}</h3>
+              <button className="btn btn-sm btn-ghost" onClick={() => setShowInviteModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-label">
+                <span className="form-label-text">Search users by email or name</span>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Type to search..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearchUsers(e.target.value)}
+                />
+              </div>
+              
+              {inviteError && (
+                <div className="form-error" style={{ color: 'var(--color-error)', fontSize: 'var(--text-sm)', marginTop: 'var(--space-2)' }}>
+                  {inviteError}
+                </div>
+              )}
+              
+              {inviteSuccess && (
+                <div className="form-success" style={{ color: 'var(--color-success)', fontSize: 'var(--text-sm)', marginTop: 'var(--space-2)' }}>
+                  User invited successfully!
+                </div>
+              )}
+              
+              {searchLoading && (
+                <div className="loading-state">Searching...</div>
+              )}
+              
+              {searchResults.length > 0 && (
+                <div className="user-search-results">
+                  {searchResults.map(user => (
+                    <div key={user.id} className="user-search-item">
+                      <div className="user-search-avatar">
+                        {user.avatar ? (
+                          <img src={user.avatar} alt={user.firstName} />
+                        ) : (
+                          <div className="avatar-placeholder">
+                            {user.firstName?.[0] || user.email?.[0] || '?'}
+                          </div>
+                        )}
+                      </div>
+                      <div className="user-search-info">
+                        <div className="user-search-name">
+                          {user.firstName} {user.lastName}
+                        </div>
+                        <div className="user-search-email">{user.email}</div>
+                      </div>
+                      <button
+                        className="btn btn-sm btn-primary"
+                        onClick={() => handleInviteUserToRoom(user.id)}
+                        disabled={invitingUserId === user.id}
+                      >
+                        {invitingUserId === user.id ? 'Inviting...' : 'Invite'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {searchQuery.length >= 2 && searchResults.length === 0 && !searchLoading && (
+                <div className="empty-state">
+                  <p>No users found matching "{searchQuery}"</p>
+                </div>
+              )}
+              
+              {searchQuery.length < 2 && (
+                <div className="form-label-hint">
+                  Type at least 2 characters to search
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
     </ProtectedRoute>

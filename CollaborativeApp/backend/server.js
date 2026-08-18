@@ -72,6 +72,7 @@ app.post('/api/auth/signup', authController.signup);
 app.post('/api/auth/login', authController.login);
 app.get('/api/auth/google/url', authController.googleAuthUrl);
 app.post('/api/auth/update-profile', authController.updateProfile);
+app.get('/api/user/profile', authController.getUserProfile);
 
 // Messages routes
 app.get('/api/messages/conversations', messagesController.getConversations);
@@ -89,18 +90,24 @@ app.post('/api/users/search', friendsController.searchUsers);
 
 // User routes
 app.get('/api/user/stats', userController.getUserStats);
+app.get('/api/users/search', userController.searchUsers);
+app.post('/api/rooms/:roomId/invite', userController.inviteUserToRoom);
 
 // Room routes
 app.post('/api/rooms', roomController.createRoom);
 app.get('/api/rooms', roomController.getUserRooms);
-app.get('/api/rooms/:roomId', roomController.getRoomById);
 app.get('/api/rooms/public', roomController.getPublicRooms);
+app.get('/api/rooms/:roomId', roomController.getRoomById);
 app.post('/api/rooms/:roomId/join', roomController.joinRoom);
 app.post('/api/rooms/:roomId/leave', roomController.leaveRoom);
 app.delete('/api/rooms/:roomId', roomController.deleteRoom);
 app.get('/api/rooms/:roomId/participants', roomController.getRoomParticipants);
 app.delete('/api/rooms/:roomId/participants/:userId', roomController.removeParticipant);
 app.post('/api/rooms/:roomId/sessions', roomController.createSession);
+app.get('/api/rooms/:roomId/messages', roomController.getRoomMessages);
+app.post('/api/rooms/:roomId/messages', roomController.sendRoomMessage);
+app.get('/api/rooms/:roomId/schedules', roomController.getRoomSchedules);
+app.post('/api/rooms/:roomId/schedules', roomController.createSchedule);
 
 // Dashboard routes
 app.get('/api/dashboard', roomController.getDashboardData);
