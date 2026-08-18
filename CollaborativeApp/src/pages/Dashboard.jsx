@@ -38,6 +38,7 @@ export default function Dashboard() {
       }
 
       // Fetch user's rooms first
+      let rooms = []
       try {
         const roomsResponse = await fetch('http://localhost:4002/api/rooms', {
           headers
@@ -45,7 +46,7 @@ export default function Dashboard() {
         
         if (roomsResponse.ok) {
           const roomsData = await roomsResponse.json()
-          const rooms = roomsData.rooms || []
+          rooms = roomsData.rooms || []
           
           // Format rooms for display
           const formattedRooms = rooms.map(room => ({
@@ -64,6 +65,49 @@ export default function Dashboard() {
         console.log('Rooms API call failed:', roomsError.message)
       }
 
+      // Fetch schedules from each room individually
+      const allSchedules = []
+      const today = new Date()
+      
+      for (const room of rooms) {
+        try {
+          const scheduleResponse = await fetch(`http://localhost:4002/api/rooms/${room.id}/schedules`, {
+            headers
+          })
+          
+          if (scheduleResponse.ok) {
+            const scheduleData = await scheduleResponse.json()
+            const roomSchedules = (scheduleData.schedules || [])
+              .filter(schedule => {
+                const scheduleDate = new Date(schedule.date)
+                return scheduleDate >= today
+              })
+              .map(schedule => {
+                const scheduleDate = new Date(schedule.date)
+                return {
+                  id: schedule.id,
+                  title: schedule.title,
+                  date: scheduleDate.getDate(),
+                  month: scheduleDate.toLocaleString('default', { month: 'short' }),
+                  time: schedule.time,
+                  room: room.name,
+                  type: 'study',
+                  roomId: room.id,
+                  fullDate: scheduleDate
+                }
+              })
+            
+            allSchedules.push(...roomSchedules)
+          }
+        } catch (scheduleError) {
+          console.log(`Failed to fetch schedules for room ${room.id}:`, scheduleError.message)
+        }
+      }
+      
+      // Sort schedules by full date
+      allSchedules.sort((a, b) => a.fullDate - b.fullDate)
+      setUpcomingSessions(allSchedules.slice(0, 5))
+
       // Fetch dashboard data - use fallback if endpoint doesn't exist
       try {
         const response = await fetch('http://localhost:4002/api/dashboard', {
@@ -73,7 +117,6 @@ export default function Dashboard() {
         if (response.ok) {
           const data = await response.json()
           setStats(data.stats || { totalRooms: 0, activeRooms: 0, totalHours: 0, streak: 0 })
-          setUpcomingSessions(data.upcomingSessions || [])
           setRecentActivity(data.recentActivity || [])
         } else {
           console.log('Dashboard endpoint not available, using empty state')
@@ -355,9 +398,10 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   upcomingSessions.map(session => (
-                    <div key={session.id} className="session-card">
+                    <div key={session.id} className="session-card" onClick={() => window.location.hash = `#/room/${session.roomId}`}>
                       <div className="session-date">
                         <div className="session-day">{session.date}</div>
+                        <div className="session-month">{session.month}</div>
                         <div className="session-time">{session.time}</div>
                       </div>
                       <div className="session-info">

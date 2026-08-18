@@ -7,7 +7,7 @@ import { BookOpen } from 'lucide-react'
 import { supabase } from '../config/supabase'
 
 export default function Profile() {
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [stats, setStats] = useState({
@@ -28,17 +28,67 @@ export default function Profile() {
 
   // Initialize profile with real user data
   useEffect(() => {
-    if (user) {
-      setProfile({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.email || '',
-        bio: 'Passionate learner and collaborative problem solver',
-        avatar: user.avatar || null,
-        timezone: 'UTC-5',
-        language: 'en'
-      })
+    const fetchUserProfile = async () => {
+      if (user) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          
+          if (!session?.access_token) {
+            return
+          }
+
+          const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          }
+
+          // Try to fetch user profile from backend
+          const response = await fetch('http://localhost:4002/api/user/profile', {
+            headers
+          })
+
+          if (response.ok) {
+            const data = await response.json()
+            if (data.profile) {
+              setProfile({
+                firstName: data.profile.first_name || user.user_metadata?.first_name || '',
+                lastName: data.profile.last_name || user.user_metadata?.last_name || '',
+                email: data.profile.email || user.email || '',
+                bio: data.profile.bio || 'Passionate learner and collaborative problem solver',
+                avatar: data.profile.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+                timezone: data.profile.timezone || 'UTC-5',
+                language: data.profile.language || 'en'
+              })
+            }
+          } else {
+            // Fallback to user metadata
+            setProfile({
+              firstName: user.user_metadata?.first_name || user.email?.split('@')[0] || '',
+              lastName: user.user_metadata?.last_name || '',
+              email: user.email || '',
+              bio: 'Passionate learner and collaborative problem solver',
+              avatar: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+              timezone: 'UTC-5',
+              language: 'en'
+            })
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error)
+          // Fallback to user metadata
+          setProfile({
+            firstName: user.user_metadata?.first_name || user.email?.split('@')[0] || '',
+            lastName: user.user_metadata?.last_name || '',
+            email: user.email || '',
+            bio: 'Passionate learner and collaborative problem solver',
+            avatar: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+            timezone: 'UTC-5',
+            language: 'en'
+          })
+        }
+      }
     }
+
+    fetchUserProfile()
   }, [user])
 
   // Fetch user statistics from backend
@@ -89,29 +139,56 @@ export default function Profile() {
   const handleSave = async () => {
     setIsLoading(true)
     try {
-      // ============================================
-      // BACKEND INTEGRATION PLACEHOLDER
-      // ============================================
-      // Replace this setTimeout with your actual API call
-      // Example:
-      // const response = await fetch('/api/user/profile', {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(profile)
-      // })
-      // const data = await response.json()
-      // if (response.ok) {
-      //     console.log('Profile updated:', data)
-      //     setIsEditing(false)
-      // } else {
-      //     setError(data.message || 'Failed to update profile')
-      // }
+      const { data: { session } } = await supabase.auth.getSession()
       
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      console.log('Profile saved:', profile)
-      setIsEditing(false)
+      if (!session?.access_token) {
+        alert('You must be logged in to update your profile')
+        return
+      }
+
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      }
+
+      const response = await fetch('http://localhost:4002/api/auth/update-profile', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          userId: user.id,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          avatarUrl: profile.avatar
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Update Supabase user metadata as well
+        const { error: metadataError } = await supabase.auth.updateUser({
+          data: {
+            first_name: profile.firstName,
+            last_name: profile.lastName
+          }
+        })
+
+        if (metadataError) {
+          console.error('Error updating user metadata:', metadataError)
+        }
+
+        alert('Profile updated successfully!')
+        setIsEditing(false)
+        
+        // Refresh user data throughout the app
+        await refreshUser()
+      } else {
+        console.error('Failed to update profile:', data.error)
+        alert('Failed to update profile: ' + (data.error || 'Unknown error'))
+      }
     } catch (err) {
       console.error('Profile update error:', err)
+      alert('Failed to update profile: ' + err.message)
     } finally {
       setIsLoading(false)
     }
@@ -182,7 +259,7 @@ export default function Profile() {
                     <img src={profile.avatar} alt="Profile" className="profile-avatar-image" />
                   ) : (
                     <div className="profile-avatar-placeholder">
-                      {profile.firstName[0] || profile.email[0]}{profile.lastName[0] || ''}
+                      {profile.firstName ? profile.firstName[0] : profile.email ? profile.email[0] : '?'}{profile.lastName ? profile.lastName[0] : ''}
                     </div>
                   )}
                 </div>

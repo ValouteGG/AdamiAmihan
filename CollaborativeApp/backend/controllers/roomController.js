@@ -1,4 +1,22 @@
 const supabase = require('../config/supabase');
+const { supabaseServiceRole } = require('../config/supabase');
+
+// Helper function to format time
+function formatTime(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+
+  return date.toLocaleDateString();
+}
 
 /**
  * Create a new study room
@@ -353,7 +371,10 @@ const getUserRooms = async (req, res) => {
  */
 const getPublicRooms = async (req, res) => {
   try {
-    const { data: rooms, error } = await supabase
+    // Use service role client to bypass RLS for public rooms
+    const client = supabaseServiceRole || supabase;
+    
+    const { data: rooms, error } = await client
       .from('study_rooms')
       .select('*')
       .eq('visibility', 'public')
@@ -363,7 +384,7 @@ const getPublicRooms = async (req, res) => {
 
     // Get participant counts for each room
     const roomIds = rooms?.map(r => r.id) || [];
-    const { data: participants } = await supabase
+    const { data: participants } = await client
       .from('room_participants')
       .select('room_id')
       .in('room_id', roomIds);
@@ -383,6 +404,7 @@ const getPublicRooms = async (req, res) => {
       createdAt: room.created_at
     })) || [];
 
+    console.log('Public rooms fetched successfully:', formattedRooms.length, 'rooms');
     res.json({ rooms: formattedRooms });
   } catch (error) {
     console.error('Error fetching public rooms:', error);
@@ -956,18 +978,20 @@ const getDashboardData = async (req, res) => {
 
     const roomIds = participants?.map(p => p.room_id) || [];
 
-    // Get upcoming sessions
+    // Get upcoming schedules from room_schedules table
     const today = new Date().toISOString().split('T')[0];
-    const { data: sessions, error: sessionsError } = await db
-      .from('room_sessions')
+    const client = supabaseServiceRole || db;
+    
+    const { data: schedules, error: schedulesError } = await client
+      .from('room_schedules')
       .select('*')
       .in('room_id', roomIds)
       .gte('scheduled_date', today)
       .order('scheduled_date', { ascending: true })
       .limit(5);
 
-    if (sessionsError) {
-      console.error('Error fetching sessions:', sessionsError);
+    if (schedulesError) {
+      console.error('Error fetching schedules:', schedulesError);
     }
 
     // Get recent activity
@@ -993,13 +1017,13 @@ const getDashboardData = async (req, res) => {
       lastActive: 'Recently'
     })) || [];
 
-    const upcomingSessions = sessions?.map(s => ({
+    const upcomingSessions = schedules?.map(s => ({
       id: s.id,
       title: s.title,
       date: new Date(s.scheduled_date).getDate(),
       time: s.scheduled_time,
       room: participants?.find(p => p.room_id === s.room_id)?.study_rooms?.name || 'Unknown',
-      type: s.session_type
+      type: 'study' // All schedules are study sessions
     })) || [];
 
     const recentActivity = activities?.map(a => ({
@@ -1026,6 +1050,320 @@ const getDashboardData = async (req, res) => {
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
     res.status(500).json({ error: 'Failed to fetch dashboard data' });
+  }
+};
+
+/**
+ * Get messages for a room
+ */
+const getRoomMessages = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    
+    // Get auth token from header
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized - No token provided' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Get user using the token
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      return res.status(401).json({ error: 'Unauthorized - Invalid token' });
+    }
+
+    const db = supabase.getAuthenticatedClient(token);
+
+    // Check if user is a participant in this room
+    const { data: participant } = await db
+      .from('room_participants')
+      .select('*')
+      .eq('room_id', roomId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!participant) {
+      return res.status(403).json({ error: 'You are not a member of this room' });
+    }
+
+    // Get room messages using service role to bypass any RLS issues
+    const client = supabaseServiceRole || db;
+    
+    const { data: messages, error } = await client
+      .from('room_messages')
+      .select('*')
+      .eq('room_id', roomId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    // Get sender profiles
+    const senderIds = [...new Set(messages?.map(m => m.sender_id) || [])];
+    const { data: profiles } = await client
+      .from('user_profiles')
+      .select('id, first_name, last_name, avatar_url, email')
+      .in('id', senderIds.length > 0 ? senderIds : ['00000000-0000-0000-0000-000000000000']);
+
+    const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+    // Format messages
+    const formattedMessages = messages?.map(msg => {
+      const profile = profileMap.get(msg.sender_id);
+      const senderName = (profile?.first_name || profile?.last_name) ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : profile?.email?.split('@')[0] || 'Unknown';
+      return {
+        id: msg.id,
+        user: senderName,
+        text: msg.content,
+        time: formatTime(msg.created_at),
+        isMine: msg.sender_id === user.id
+      };
+    }) || [];
+
+    res.json({ messages: formattedMessages });
+  } catch (error) {
+    console.error('Error fetching room messages:', error);
+    res.status(500).json({ error: 'Failed to fetch room messages' });
+  }
+};
+
+/**
+ * Send a message to a room
+ */
+const sendRoomMessage = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { text } = req.body;
+    
+    // Get auth token from header
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized - No token provided' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Get user using the token
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      return res.status(401).json({ error: 'Unauthorized - Invalid token' });
+    }
+
+    const db = supabase.getAuthenticatedClient(token);
+
+    // Check if user is a participant in this room
+    const { data: participant } = await db
+      .from('room_participants')
+      .select('*')
+      .eq('room_id', roomId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!participant) {
+      return res.status(403).json({ error: 'You are not a member of this room' });
+    }
+
+    // Insert message using service role to bypass any RLS issues
+    const client = supabaseServiceRole || db;
+    
+    const { data: message, error } = await client
+      .from('room_messages')
+      .insert({
+        room_id: roomId,
+        sender_id: user.id,
+        content: text
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Get user profile for response
+    const { data: profile } = await client
+      .from('user_profiles')
+      .select('first_name, last_name, email')
+      .eq('id', user.id)
+      .single();
+
+    const senderName = (profile?.first_name || profile?.last_name) ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : profile?.email?.split('@')[0] || 'You';
+
+    res.status(201).json({
+      message: {
+        id: message.id,
+        user: senderName,
+        text: message.content,
+        time: formatTime(message.created_at),
+        isMine: true
+      }
+    });
+  } catch (error) {
+    console.error('Error sending room message:', error);
+    res.status(500).json({ error: 'Failed to send room message' });
+  }
+};
+
+/**
+ * Create a schedule for a room
+ */
+const createSchedule = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { title, date, time, description } = req.body;
+    
+    // Get auth token from header
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized - No token provided' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Get user using the token
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      return res.status(401).json({ error: 'Unauthorized - Invalid token' });
+    }
+
+    const db = supabase.getAuthenticatedClient(token);
+
+    // Check if user is the owner of this room
+    const { data: participant } = await db
+      .from('room_participants')
+      .select('*')
+      .eq('room_id', roomId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!participant || participant.role !== 'owner') {
+      return res.status(403).json({ error: 'Only room owners can create schedules' });
+    }
+
+    // Insert schedule using service role to bypass any RLS issues
+    const client = supabaseServiceRole || db;
+    
+    const { data: schedule, error } = await client
+      .from('room_schedules')
+      .insert({
+        room_id: roomId,
+        title,
+        scheduled_date: date,
+        scheduled_time: time,
+        description: description || null,
+        created_by: user.id
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Announce the schedule in the chat
+    const announcementMessage = `📅 New study session scheduled: "${title}" on ${new Date(date).toLocaleDateString()} at ${time}`;
+    
+    await client
+      .from('room_messages')
+      .insert({
+        room_id: roomId,
+        sender_id: user.id,
+        content: announcementMessage
+      });
+
+    // Get user profile for response
+    const { data: profile } = await client
+      .from('user_profiles')
+      .select('first_name, last_name, email')
+      .eq('id', user.id)
+      .single();
+
+    const senderName = (profile?.first_name || profile?.last_name) ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : profile?.email?.split('@')[0] || 'You';
+
+    res.status(201).json({
+      schedule: {
+        id: schedule.id,
+        title: schedule.title,
+        date: schedule.scheduled_date,
+        time: schedule.scheduled_time,
+        description: schedule.description,
+        createdBy: senderName
+      },
+      message: {
+        id: Date.now(), // Temporary ID for the announcement
+        user: senderName,
+        text: announcementMessage,
+        time: 'Just now',
+        isMine: true
+      }
+    });
+  } catch (error) {
+    console.error('Error creating schedule:', error);
+    res.status(500).json({ error: 'Failed to create schedule' });
+  }
+};
+
+/**
+ * Get schedules for a room
+ */
+const getRoomSchedules = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    
+    // Get auth token from header
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized - No token provided' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Get user using the token
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      return res.status(401).json({ error: 'Unauthorized - Invalid token' });
+    }
+
+    const db = supabase.getAuthenticatedClient(token);
+
+    // Check if user is a participant in this room
+    const { data: participant } = await db
+      .from('room_participants')
+      .select('*')
+      .eq('room_id', roomId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!participant) {
+      return res.status(403).json({ error: 'You are not a member of this room' });
+    }
+
+    // Get schedules using service role to bypass any RLS issues
+    const client = supabaseServiceRole || db;
+    
+    const { data: schedules, error } = await client
+      .from('room_schedules')
+      .select('*')
+      .eq('room_id', roomId)
+      .order('scheduled_date', { ascending: true });
+
+    if (error) throw error;
+
+    // Format schedules
+    const formattedSchedules = schedules?.map(schedule => ({
+      id: schedule.id,
+      title: schedule.title,
+      date: schedule.scheduled_date,
+      time: schedule.scheduled_time,
+      description: schedule.description,
+      createdAt: schedule.created_at
+    })) || [];
+
+    res.json({ schedules: formattedSchedules });
+  } catch (error) {
+    console.error('Error fetching room schedules:', error);
+    res.status(500).json({ error: 'Failed to fetch room schedules' });
   }
 };
 
@@ -1057,5 +1395,9 @@ module.exports = {
   getRoomParticipants,
   removeParticipant,
   createSession,
-  getDashboardData
+  getDashboardData,
+  getRoomMessages,
+  sendRoomMessage,
+  createSchedule,
+  getRoomSchedules
 };

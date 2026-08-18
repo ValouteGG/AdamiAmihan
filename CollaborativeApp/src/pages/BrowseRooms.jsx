@@ -9,30 +9,25 @@ export default function BrowseRooms(){
   const { isAuthenticated } = useAuth()
   const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
+  const [joiningRoom, setJoiningRoom] = useState(null)
   
   // Fetch real rooms from backend
   useEffect(() => {
     const fetchRooms = async () => {
       try {
         setLoading(true)
-        const { data: { session } } = await supabase.auth.getSession()
         
-        const headers = {
-          'Content-Type': 'application/json',
-        }
-        
-        if (session?.access_token) {
-          headers['Authorization'] = `Bearer ${session.access_token}`
-        }
-
         // Try to fetch rooms, fallback to empty state if endpoint doesn't exist
         try {
           const response = await fetch('http://localhost:4002/api/rooms/public', {
-            headers
+            headers: {
+              'Content-Type': 'application/json',
+            }
           })
           
           if (response.ok) {
             const data = await response.json()
+            console.log('Public rooms data received:', data)
             setRooms(data.rooms || [])
           } else {
             console.log('Rooms endpoint not available, using empty state')
@@ -49,6 +44,45 @@ export default function BrowseRooms(){
 
     fetchRooms()
   }, [])
+
+  const handleJoinRoom = async (roomId) => {
+    try {
+      setJoiningRoom(roomId)
+      
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        alert('You must be logged in to join a room')
+        window.location.hash = '#/login'
+        return
+      }
+
+      const response = await fetch(`http://localhost:4002/api/rooms/${roomId}/join`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        console.log('Successfully joined room:', roomId)
+        alert('Successfully joined the room!')
+        // Redirect to the room
+        window.location.hash = `#/room/${roomId}`
+      } else {
+        console.error('Failed to join room:', data.error)
+        alert(data.error || 'Failed to join room')
+      }
+    } catch (error) {
+      console.error('Error joining room:', error)
+      alert('Failed to join room. Please try again.')
+    } finally {
+      setJoiningRoom(null)
+    }
+  }
 
   return (
     <div className="page-root">
@@ -120,7 +154,13 @@ export default function BrowseRooms(){
                       </div>
                     </div>
                     <div className="room-actions">
-                      <button className="btn btn-primary btn-sm">Join Room</button>
+                      <button 
+                        className="btn btn-primary btn-sm" 
+                        onClick={() => handleJoinRoom(room.id)}
+                        disabled={joiningRoom === room.id}
+                      >
+                        {joiningRoom === room.id ? 'Joining...' : 'Join Room'}
+                      </button>
                     </div>
                   </li>
                 ))}

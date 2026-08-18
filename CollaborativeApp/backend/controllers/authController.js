@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase');
+const { supabaseServiceRole } = require('../config/supabase');
 
 /**
  * Helper function to create or update user profile
@@ -14,8 +15,11 @@ const createOrUpdateUserProfile = async (user) => {
     
     console.log('Creating/updating user profile:', { id, firstName, lastName, avatarUrl });
     
+    // Use service role client to bypass RLS
+    const client = supabaseServiceRole || supabase;
+    
     // Check if profile exists
-    const { data: existingProfile } = await supabase
+    const { data: existingProfile } = await client
       .from('user_profiles')
       .select('*')
       .eq('id', id)
@@ -23,7 +27,7 @@ const createOrUpdateUserProfile = async (user) => {
     
     if (existingProfile) {
       // Update existing profile
-      const { error } = await supabase
+      const { error } = await client
         .from('user_profiles')
         .update({
           first_name: firstName,
@@ -41,7 +45,7 @@ const createOrUpdateUserProfile = async (user) => {
       }
     } else {
       // Create new profile
-      const { error } = await supabase
+      const { error } = await client
         .from('user_profiles')
         .insert({
           id: id,
@@ -74,7 +78,10 @@ const updateProfile = async (req, res) => {
       return res.status(400).json({ error: 'User ID is required' });
     }
 
-    const { error } = await supabase
+    // Use service role client to bypass RLS
+    const client = supabaseServiceRole || supabase;
+    
+    const { error } = await client
       .from('user_profiles')
       .upsert({
         id: userId,
@@ -90,6 +97,60 @@ const updateProfile = async (req, res) => {
   } catch (error) {
     console.error('Error updating profile:', error);
     res.status(500).json({ error: 'Failed to update profile' });
+  }
+};
+
+/**
+ * Get user profile
+ */
+const getUserProfile = async (req, res) => {
+  try {
+    // Get auth token from header
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized - No token provided' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Get user using the token
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      return res.status(401).json({ error: 'Unauthorized - Invalid token' });
+    }
+
+    // Use service role client to bypass RLS
+    const client = supabaseServiceRole || supabase;
+    
+    // Get user profile from database
+    const { data: profile, error: profileError } = await client
+      .from('user_profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error('Error fetching user profile:', profileError);
+      // Return user metadata as fallback
+      return res.json({
+        profile: {
+          id: user.id,
+          first_name: user.user_metadata?.first_name || '',
+          last_name: user.user_metadata?.last_name || '',
+          email: user.email,
+          avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+          bio: '',
+          timezone: 'UTC-5',
+          language: 'en'
+        }
+      });
+    }
+
+    res.json({ profile });
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ error: 'Failed to fetch user profile' });
   }
 };
 
@@ -355,5 +416,6 @@ module.exports = {
   signup,
   login,
   googleAuthUrl,
-  updateProfile
+  updateProfile,
+  getUserProfile
 };
