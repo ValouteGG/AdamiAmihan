@@ -20,47 +20,75 @@ export default function Dashboard() {
   const [upcomingSessions, setUpcomingSessions] = useState([])
   const [recentActivity, setRecentActivity] = useState([])
   const [dataLoading, setDataLoading] = useState(true)
+  const [leavingRoomId, setLeavingRoomId] = useState(null)
+  const [deletingRoomId, setDeletingRoomId] = useState(null)
 
   // Fetch real data from backend
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setDataLoading(true)
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        const headers = {
-          'Content-Type': 'application/json',
-        }
-        
-        if (session?.access_token) {
-          headers['Authorization'] = `Bearer ${session.access_token}`
-        }
-
-        // Fetch dashboard data - use fallback if endpoint doesn't exist
-        try {
-          const response = await fetch('http://localhost:4002/api/dashboard', {
-            headers
-          })
-          
-          if (response.ok) {
-            const data = await response.json()
-            setStats(data.stats || { totalRooms: 0, activeRooms: 0, totalHours: 0, streak: 0 })
-            setRecentRooms(data.recentRooms || [])
-            setUpcomingSessions(data.upcomingSessions || [])
-            setRecentActivity(data.recentActivity || [])
-          } else {
-            console.log('Dashboard endpoint not available, using empty state')
-          }
-        } catch (apiError) {
-          console.log('Dashboard API call failed, using empty state:', apiError.message)
-        }
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error)
-      } finally {
-        setDataLoading(false)
+  const fetchDashboardData = async () => {
+    try {
+      setDataLoading(true)
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers = {
+        'Content-Type': 'application/json',
       }
-    }
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
 
+      // Fetch user's rooms first
+      try {
+        const roomsResponse = await fetch('http://localhost:4002/api/rooms', {
+          headers
+        })
+        
+        if (roomsResponse.ok) {
+          const roomsData = await roomsResponse.json()
+          const rooms = roomsData.rooms || []
+          
+          // Format rooms for display
+          const formattedRooms = rooms.map(room => ({
+            id: room.id,
+            name: room.name,
+            subject: room.subject,
+            participants: 0, // Will need to implement participant counting
+            role: room.role,
+            isActive: true,
+            lastActive: 'Recently'
+          }))
+          
+          setRecentRooms(formattedRooms)
+        }
+      } catch (roomsError) {
+        console.log('Rooms API call failed:', roomsError.message)
+      }
+
+      // Fetch dashboard data - use fallback if endpoint doesn't exist
+      try {
+        const response = await fetch('http://localhost:4002/api/dashboard', {
+          headers
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setStats(data.stats || { totalRooms: 0, activeRooms: 0, totalHours: 0, streak: 0 })
+          setUpcomingSessions(data.upcomingSessions || [])
+          setRecentActivity(data.recentActivity || [])
+        } else {
+          console.log('Dashboard endpoint not available, using empty state')
+        }
+      } catch (apiError) {
+        console.log('Dashboard API call failed, using empty state:', apiError.message)
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+    } finally {
+      setDataLoading(false)
+    }
+  }
+
+  useEffect(() => {
     fetchDashboardData()
   }, [])
 
@@ -80,6 +108,82 @@ export default function Dashboard() {
       case 'collaboration': return 'badge-secondary'
       case 'workshop': return 'badge-success'
       default: return 'badge-muted'
+    }
+  }
+
+  const handleLeaveRoom = async (roomId, roomName) => {
+    if (!window.confirm(`Are you sure you want to leave "${roomName}"?`)) {
+      return
+    }
+
+    try {
+      setLeavingRoomId(roomId)
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        alert('You must be logged in to leave a room')
+        return
+      }
+
+      const response = await fetch(`http://localhost:4002/api/rooms/${roomId}/leave`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Refresh dashboard data to remove the left room
+        fetchDashboardData()
+      } else {
+        alert(data.error || 'Failed to leave room')
+      }
+    } catch (err) {
+      console.error('Error leaving room:', err)
+      alert('Failed to leave room. Please try again.')
+    } finally {
+      setLeavingRoomId(null)
+    }
+  }
+
+  const handleDeleteRoom = async (roomId, roomName) => {
+    if (!window.confirm(`Are you sure you want to delete "${roomName}"? This action cannot be undone and will remove all participants, sessions, and data.`)) {
+      return
+    }
+
+    try {
+      setDeletingRoomId(roomId)
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        alert('You must be logged in to delete a room')
+        return
+      }
+
+      const response = await fetch(`http://localhost:4002/api/rooms/${roomId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Refresh dashboard data to remove the deleted room
+        fetchDashboardData()
+      } else {
+        alert(data.error || 'Failed to delete room')
+      }
+    } catch (err) {
+      console.error('Error deleting room:', err)
+      alert('Failed to delete room. Please try again.')
+    } finally {
+      setDeletingRoomId(null)
     }
   }
 
@@ -179,8 +283,8 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   recentRooms.map(room => (
-                    <div key={room.id} className="room-card" onClick={() => window.location.hash = '#/room'}>
-                      <div className="room-info">
+                    <div key={room.id} className="room-card">
+                      <div className="room-info" onClick={() => window.location.hash = `#/room/${room.id}`}>
                         <div className="room-name">{room.name}</div>
                         <div className="room-details">
                           <span className="room-subject">{room.subject}</span>
@@ -198,7 +302,35 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div className="room-actions">
-                        <button className="btn btn-sm btn-primary">Join</button>
+                        <button 
+                          className="btn btn-sm btn-primary"
+                          onClick={() => window.location.hash = `#/room/${room.id}`}
+                        >
+                          Join
+                        </button>
+                        {room.role === 'owner' ? (
+                          <button 
+                            className="btn btn-sm btn-danger"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteRoom(room.id, room.name)
+                            }}
+                            disabled={deletingRoomId === room.id}
+                          >
+                            {deletingRoomId === room.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        ) : (
+                          <button 
+                            className="btn btn-sm btn-ghost"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleLeaveRoom(room.id, room.name)
+                            }}
+                            disabled={leavingRoomId === room.id}
+                          >
+                            {leavingRoomId === room.id ? 'Leaving...' : 'Leave'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))

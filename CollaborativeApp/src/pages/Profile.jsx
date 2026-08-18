@@ -4,11 +4,18 @@ import ThemeToggle from '../components/ThemeToggle'
 import ProtectedRoute from '../components/ProtectedRoute'
 import { useAuth } from '../context/AuthContext'
 import { BookOpen } from 'lucide-react'
+import { supabase } from '../config/supabase'
 
 export default function Profile() {
   const { user } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [stats, setStats] = useState({
+    rooms: 0,
+    sessions: 0,
+    hours: 0
+  })
+  const [statsLoading, setStatsLoading] = useState(true)
   const [profile, setProfile] = useState({
     firstName: '',
     lastName: '',
@@ -33,6 +40,43 @@ export default function Profile() {
       })
     }
   }, [user])
+
+  // Fetch user statistics from backend
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setStatsLoading(true)
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        const headers = {
+          'Content-Type': 'application/json',
+        }
+        
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`
+        }
+
+        const response = await fetch('http://localhost:4002/api/user/stats', {
+          headers
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setStats(data.stats || { rooms: 0, sessions: 0, hours: 0 })
+        } else {
+          console.error('Failed to fetch user stats')
+          setStats({ rooms: 0, sessions: 0, hours: 0 })
+        }
+      } catch (error) {
+        console.error('Error fetching user stats:', error)
+        setStats({ rooms: 0, sessions: 0, hours: 0 })
+      } finally {
+        setStatsLoading(false)
+      }
+    }
+
+    fetchStats()
+  }, [])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -159,15 +203,15 @@ export default function Profile() {
 
               <div className="profile-stats">
                 <div className="profile-stat">
-                  <div className="profile-stat-value">12</div>
+                  <div className="profile-stat-value">{statsLoading ? '...' : stats.rooms}</div>
                   <div className="profile-stat-label">Rooms</div>
                 </div>
                 <div className="profile-stat">
-                  <div className="profile-stat-value">48</div>
+                  <div className="profile-stat-value">{statsLoading ? '...' : stats.sessions}</div>
                   <div className="profile-stat-label">Sessions</div>
                 </div>
                 <div className="profile-stat">
-                  <div className="profile-stat-value">156</div>
+                  <div className="profile-stat-value">{statsLoading ? '...' : stats.hours}</div>
                   <div className="profile-stat-label">Hours</div>
                 </div>
               </div>
