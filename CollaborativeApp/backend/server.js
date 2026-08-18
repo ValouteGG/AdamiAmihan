@@ -5,6 +5,8 @@ const { Server } = require('socket.io');
 const authController = require('./controllers/authController');
 const messagesController = require('./controllers/messagesController');
 const friendsController = require('./controllers/friendsController');
+const userController = require('./controllers/userController');
+const roomController = require('./controllers/roomController');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -84,6 +86,24 @@ app.post('/api/friends/requests/:requestId/accept', friendsController.acceptFrie
 app.post('/api/friends/requests/:requestId/decline', friendsController.declineFriendRequest);
 app.delete('/api/friends/:friendId', friendsController.removeFriend);
 app.post('/api/users/search', friendsController.searchUsers);
+
+// User routes
+app.get('/api/user/stats', userController.getUserStats);
+
+// Room routes
+app.post('/api/rooms', roomController.createRoom);
+app.get('/api/rooms', roomController.getUserRooms);
+app.get('/api/rooms/:roomId', roomController.getRoomById);
+app.get('/api/rooms/public', roomController.getPublicRooms);
+app.post('/api/rooms/:roomId/join', roomController.joinRoom);
+app.post('/api/rooms/:roomId/leave', roomController.leaveRoom);
+app.delete('/api/rooms/:roomId', roomController.deleteRoom);
+app.get('/api/rooms/:roomId/participants', roomController.getRoomParticipants);
+app.delete('/api/rooms/:roomId/participants/:userId', roomController.removeParticipant);
+app.post('/api/rooms/:roomId/sessions', roomController.createSession);
+
+// Dashboard routes
+app.get('/api/dashboard', roomController.getDashboardData);
 
 // WebRTC Signaling Server
 const activeCalls = new Map();

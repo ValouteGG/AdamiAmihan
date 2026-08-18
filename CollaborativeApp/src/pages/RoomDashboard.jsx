@@ -1,42 +1,118 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import '../styles/pages.css'
 import ThemeToggle from '../components/ThemeToggle'
 import ProtectedRoute from '../components/ProtectedRoute'
+import { supabase } from '../config/supabase'
 
 export default function RoomDashboard() {
   const [activeTab, setActiveTab] = useState('chat')
   const [message, setMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [leavingRoom, setLeavingRoom] = useState(false)
+  const [deletingRoom, setDeletingRoom] = useState(false)
+  const [participants, setParticipants] = useState([])
+  const [participantsLoading, setParticipantsLoading] = useState(true)
+  const [isOwner, setIsOwner] = useState(false)
+  const [room, setRoom] = useState(null)
+  const [roomLoading, setRoomLoading] = useState(true)
   
-  // Mock data for demo
-  const [room] = useState({
-    id: '1',
-    name: 'Calculus Study Group',
-    subject: 'Mathematics',
-    description: 'Weekly calculus study sessions for exam preparation',
-    participants: [
-      { id: 1, name: 'Alice Johnson', avatar: 'A', status: 'online' },
-      { id: 2, name: 'Bob Smith', avatar: 'B', status: 'online' },
-      { id: 3, name: 'Carol Davis', avatar: 'C', status: 'away' },
-      { id: 4, name: 'You', avatar: 'Y', status: 'online' }
-    ],
-    resources: [
-      { id: 1, name: 'Calculus Notes.pdf', type: 'pdf', size: '2.4 MB', uploadedBy: 'Alice Johnson' },
-      { id: 2, name: 'Practice Problems.docx', type: 'doc', size: '1.1 MB', uploadedBy: 'Bob Smith' },
-      { id: 3, name: 'Formula Sheet.png', type: 'image', size: '856 KB', uploadedBy: 'Carol Davis' }
-    ],
-    schedule: [
-      { id: 1, title: 'Chapter 5 Review', date: '2024-01-20', time: '3:00 PM' },
-      { id: 2, title: 'Practice Session', date: '2024-01-22', time: '4:00 PM' },
-      { id: 3, title: 'Exam Prep', date: '2024-01-25', time: '2:00 PM' }
-    ]
-  })
+  // Get room ID from URL hash
+  const getRoomIdFromHash = () => {
+    const hash = window.location.hash
+    const match = hash.match(/\/room\/?([a-f0-9-]+)/)
+    return match ? match[1] : null
+  }
 
-  const [messages, setMessages] = useState([
-    { id: 1, user: 'Alice Johnson', text: 'Hey everyone! Ready for today\'s session?', time: '2:55 PM', isMine: false },
-    { id: 2, user: 'Bob Smith', text: 'Yes! I have some questions about derivatives', time: '2:56 PM', isMine: false },
-    { id: 3, user: 'You', text: 'I\'ll bring my notes from last class', time: '2:57 PM', isMine: true }
-  ])
+  // Fetch room details
+  useEffect(() => {
+    const fetchRoomDetails = async () => {
+      try {
+        setRoomLoading(true)
+        const roomId = getRoomIdFromHash()
+        
+        if (!roomId) {
+          console.error('No room ID found in URL')
+          setRoomLoading(false)
+          return
+        }
+
+        console.log('Fetching room with ID:', roomId)
+
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!session?.access_token) {
+          console.error('No session found')
+          setRoomLoading(false)
+          return
+        }
+
+        // Fetch room details directly by ID
+        const response = await fetch(`http://localhost:4002/api/rooms/${roomId}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          console.log('Room data:', data.room)
+          setRoom(data.room)
+        } else {
+          const errorData = await response.json()
+          console.error('Failed to fetch room:', response.status, errorData)
+          setRoom(null)
+        }
+      } catch (error) {
+        console.error('Error fetching room details:', error)
+        setRoom(null)
+      } finally {
+        setRoomLoading(false)
+      }
+    }
+
+    fetchRoomDetails()
+  }, [])
+
+  // Fetch participants
+  useEffect(() => {
+    const fetchParticipants = async () => {
+      if (!room) return
+      
+      try {
+        setParticipantsLoading(true)
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!session?.access_token) {
+          return
+        }
+
+        const response = await fetch(`http://localhost:4002/api/rooms/${room.id}/participants`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setParticipants(data.participants || [])
+          // Check if current user is owner
+          const { data: { user } } = await supabase.auth.getUser()
+          const currentUser = data.participants?.find(p => p.id === user?.id)
+          setIsOwner(currentUser?.role === 'owner')
+        }
+      } catch (error) {
+        console.error('Error fetching participants:', error)
+      } finally {
+        setParticipantsLoading(false)
+      }
+    }
+
+    fetchParticipants()
+  }, [room])
+
+  const [messages, setMessages] = useState([])
 
   const handleSendMessage = async () => {
     if (!message.trim()) return
@@ -89,20 +165,116 @@ export default function RoomDashboard() {
 
   const handleLeaveRoom = async () => {
     if (window.confirm('Are you sure you want to leave this room?')) {
-      // ============================================
-      // BACKEND INTEGRATION PLACEHOLDER
-      // ============================================
-      // Replace this with actual API call
-      // Example:
-      // const response = await fetch(`/api/rooms/${room.id}/leave`, {
-      //   method: 'POST'
-      // })
-      // if (response.ok) {
-      //     window.location.hash = '#/browse'
-      // }
+      try {
+        setLeavingRoom(true)
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!session?.access_token) {
+          alert('You must be logged in to leave a room')
+          return
+        }
+
+        const response = await fetch(`http://localhost:4002/api/rooms/${room.id}/leave`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        })
+
+        const data = await response.json()
+
+        if (response.ok) {
+          window.location.hash = '#/dashboard'
+        } else {
+          alert(data.error || 'Failed to leave room')
+        }
+      } catch (err) {
+        console.error('Error leaving room:', err)
+        alert('Failed to leave room. Please try again.')
+      } finally {
+        setLeavingRoom(false)
+      }
+    }
+  }
+
+  const handleDeleteRoom = async () => {
+    if (window.confirm(`Are you sure you want to delete "${room.name}"? This action cannot be undone and will remove all participants, sessions, and data.`)) {
+      try {
+        setDeletingRoom(true)
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!session?.access_token) {
+          alert('You must be logged in to delete a room')
+          return
+        }
+
+        const response = await fetch(`http://localhost:4002/api/rooms/${room.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        })
+
+        const data = await response.json()
+
+        if (response.ok) {
+          window.location.hash = '#/dashboard'
+        } else {
+          alert(data.error || 'Failed to delete room')
+        }
+      } catch (err) {
+        console.error('Error deleting room:', err)
+        alert('Failed to delete room. Please try again.')
+      } finally {
+        setDeletingRoom(false)
+      }
+    }
+  }
+
+  const handleRemoveParticipant = async (userId, userName) => {
+    if (!window.confirm(`Are you sure you want to remove "${userName}" from this room?`)) {
+      return
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
       
-      console.log('Leave room requested')
-      alert('Leaving room requires backend integration')
+      if (!session?.access_token) {
+        alert('You must be logged in to remove participants')
+        return
+      }
+
+      const response = await fetch(`http://localhost:4002/api/rooms/${room.id}/participants/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Refresh participants list
+        const participantsResponse = await fetch(`http://localhost:4002/api/rooms/${room.id}/participants`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        })
+        
+        if (participantsResponse.ok) {
+          const participantsData = await participantsResponse.json()
+          setParticipants(participantsData.participants || [])
+        }
+      } else {
+        alert(data.error || 'Failed to remove participant')
+      }
+    } catch (err) {
+      console.error('Error removing participant:', err)
+      alert('Failed to remove participant. Please try again.')
     }
   }
 
@@ -131,19 +303,34 @@ export default function RoomDashboard() {
         <header className="page-header page-header-compact">
           <div className="page-header-brand">
             <a href="#/browse" className="btn btn-ghost btn-sm">← Back</a>
-            <a href="#/" className="page-header-title">{room.name}</a>
+            <a href="#/" className="page-header-title">{roomLoading ? 'Loading...' : room?.name || 'Room'}</a>
           </div>
           <nav className="page-header-nav">
             <button className="btn btn-sm btn-ghost" onClick={handleInviteUser}>
               Invite
             </button>
             <ThemeToggle />
-            <button className="btn btn-sm btn-danger" onClick={handleLeaveRoom}>
-              Leave Room
-            </button>
+            {isOwner ? (
+              <button className="btn btn-sm btn-danger" onClick={handleDeleteRoom} disabled={deletingRoom}>
+                {deletingRoom ? 'Deleting...' : 'Delete Room'}
+              </button>
+            ) : (
+              <button className="btn btn-sm btn-danger" onClick={handleLeaveRoom} disabled={leavingRoom}>
+                {leavingRoom ? 'Leaving...' : 'Leave Room'}
+              </button>
+            )}
           </nav>
         </header>
 
+      {roomLoading ? (
+        <div className="loading-state">Loading room...</div>
+      ) : !room ? (
+        <div className="empty-state">
+          <h3>Room not found</h3>
+          <p>The room you're looking for doesn't exist or you don't have access to it.</p>
+          <a href="#/dashboard" className="btn btn-primary">Go to Dashboard</a>
+        </div>
+      ) : (
       <div className="room-dashboard">
         <div className="room-sidebar">
           <div className="room-info">
@@ -152,17 +339,40 @@ export default function RoomDashboard() {
           </div>
 
           <div className="room-participants">
-            <h3 className="room-section-title">Participants ({room.participants.length})</h3>
+            <h3 className="room-section-title">Participants ({participants.length})</h3>
             <div className="participant-list">
-              {room.participants.map(participant => (
-                <div key={participant.id} className="participant-item">
-                  <div className="participant-avatar">
-                    {participant.avatar}
-                    <span className={`participant-status participant-status-${participant.status}`}></span>
-                  </div>
-                  <div className="participant-name">{participant.name}</div>
+              {participantsLoading ? (
+                <div className="loading-state">Loading participants...</div>
+              ) : participants.length === 0 ? (
+                <div className="empty-state">
+                  <p>No participants yet</p>
                 </div>
-              ))}
+              ) : (
+                participants.map(participant => (
+                  <div key={participant.id} className="participant-item">
+                    <div className="participant-avatar">
+                      {participant.avatar}
+                      <span className={`participant-status ${participant.isOnline ? 'participant-status-online' : 'participant-status-offline'}`}></span>
+                    </div>
+                    <div className="participant-info">
+                      <div className="participant-name">{participant.name}</div>
+                      <div className="participant-role">
+                        {participant.role === 'owner' && <span className="badge badge-primary">Owner</span>}
+                        {participant.role === 'admin' && <span className="badge badge-secondary">Admin</span>}
+                        {participant.role === 'member' && <span className="badge badge-muted">Member</span>}
+                      </div>
+                    </div>
+                    {isOwner && participant.role !== 'owner' && (
+                      <button 
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => handleRemoveParticipant(participant.id, participant.name)}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -193,15 +403,21 @@ export default function RoomDashboard() {
             {activeTab === 'chat' && (
               <div className="room-chat">
                 <div className="chat-messages">
-                  {messages.map(msg => (
-                    <div key={msg.id} className={`chat-message ${msg.isMine ? 'chat-message-mine' : ''}`}>
-                      <div className="chat-message-header">
-                        <span className="chat-message-user">{msg.user}</span>
-                        <span className="chat-message-time">{msg.time}</span>
-                      </div>
-                      <div className="chat-message-text">{msg.text}</div>
+                  {messages.length === 0 ? (
+                    <div className="empty-state">
+                      <p>No messages yet. Start the conversation!</p>
                     </div>
-                  ))}
+                  ) : (
+                    messages.map(msg => (
+                      <div key={msg.id} className={`chat-message ${msg.isMine ? 'chat-message-mine' : ''}`}>
+                        <div className="chat-message-header">
+                          <span className="chat-message-user">{msg.user}</span>
+                          <span className="chat-message-time">{msg.time}</span>
+                        </div>
+                        <div className="chat-message-text">{msg.text}</div>
+                      </div>
+                    ))
+                  )}
                 </div>
                 <div className="chat-input-area">
                   <div className="chat-input-wrapper">
@@ -239,22 +455,28 @@ export default function RoomDashboard() {
                   </label>
                 </div>
                 <div className="resource-list">
-                  {room.resources.map(resource => (
-                    <div key={resource.id} className="resource-item">
-                      <div className="resource-icon">
-                        {resource.type === 'pdf' && '📄'}
-                        {resource.type === 'doc' && '📝'}
-                        {resource.type === 'image' && '🖼️'}
-                      </div>
-                      <div className="resource-info">
-                        <div className="resource-name">{resource.name}</div>
-                        <div className="resource-meta">
-                          {resource.size} • Uploaded by {resource.uploadedBy}
+                  {room.resources && room.resources.length > 0 ? (
+                    room.resources.map(resource => (
+                      <div key={resource.id} className="resource-item">
+                        <div className="resource-icon">
+                          {resource.type === 'pdf' && '📄'}
+                          {resource.type === 'doc' && '📝'}
+                          {resource.type === 'image' && '🖼️'}
                         </div>
+                        <div className="resource-info">
+                          <div className="resource-name">{resource.name}</div>
+                          <div className="resource-meta">
+                            {resource.size} • Uploaded by {resource.uploadedBy}
+                          </div>
+                        </div>
+                        <button className="btn btn-sm btn-ghost">Download</button>
                       </div>
-                      <button className="btn btn-sm btn-ghost">Download</button>
+                    ))
+                  ) : (
+                    <div className="empty-state">
+                      <p>No resources shared yet</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             )}
@@ -263,25 +485,32 @@ export default function RoomDashboard() {
               <div className="room-schedule">
                 <h3>Upcoming Sessions</h3>
                 <div className="schedule-list">
-                  {room.schedule.map(session => (
-                    <div key={session.id} className="schedule-item">
-                      <div className="schedule-date">
-                        <div className="schedule-day">{new Date(session.date).getDate()}</div>
-                        <div className="schedule-month">{new Date(session.date).toLocaleString('default', { month: 'short' })}</div>
+                  {room.schedule && room.schedule.length > 0 ? (
+                    room.schedule.map(session => (
+                      <div key={session.id} className="schedule-item">
+                        <div className="schedule-date">
+                          <div className="schedule-day">{new Date(session.date).getDate()}</div>
+                          <div className="schedule-month">{new Date(session.date).toLocaleString('default', { month: 'short' })}</div>
+                        </div>
+                        <div className="schedule-info">
+                          <div className="schedule-title">{session.title}</div>
+                          <div className="schedule-time">{session.time}</div>
+                        </div>
+                        <button className="btn btn-sm btn-primary">Join</button>
                       </div>
-                      <div className="schedule-info">
-                        <div className="schedule-title">{session.title}</div>
-                        <div className="schedule-time">{session.time}</div>
-                      </div>
-                      <button className="btn btn-sm btn-primary">Join</button>
+                    ))
+                  ) : (
+                    <div className="empty-state">
+                      <p>No scheduled sessions yet</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             )}
           </div>
         </div>
       </div>
+      )}
     </div>
     </ProtectedRoute>
   )
