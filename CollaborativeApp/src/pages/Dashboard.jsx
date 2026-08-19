@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { BookOpen, Users, Clock, Award, MessageSquare, Paperclip, Mail, Trophy, Plus, Search, User, Timer, Palette, Layout, Calendar } from 'lucide-react'
 import '../styles/pages.css'
+import '../styles/room-cards.css'
 import ThemeToggle from '../components/ThemeToggle'
 import ProtectedRoute from '../components/ProtectedRoute'
 import { supabase } from '../config/supabase'
@@ -258,12 +259,12 @@ export default function Dashboard() {
       <div className="page-content">
         <div className="page-inner dashboard-inner">
           <div className="dashboard-header">
-            <div>
+            <div className="dashboard-header-content">
               <h1 className="page-title">Welcome back!</h1>
               <p className="page-subtitle">Here's what's happening with your study groups</p>
             </div>
             <button className="btn btn-primary" onClick={() => window.location.hash = '#/create'}>
-              <Plus size={16} className="btn-icon" />
+              <Plus size={20} className="btn-icon" />
               Create Room
             </button>
           </div>
@@ -327,33 +328,50 @@ export default function Dashboard() {
                 ) : (
                   recentRooms.map(room => (
                     <div key={room.id} className="room-card">
-                      <div className="room-info" onClick={() => window.location.hash = `#/room/${room.id}`}>
-                        <div className="room-name">{room.name}</div>
-                        <div className="room-details">
-                          <span className="room-subject">{room.subject}</span>
-                          <span className="room-participants">
-                            <Users size={16} className="room-participants-icon" />
-                            {room.participants}
-                          </span>
-                          <span className="room-status">
-                            {room.isActive ? (
-                              <span className="room-status-active">Active now</span>
-                            ) : (
-                              <span>{room.lastActive}</span>
-                            )}
-                          </span>
+                      <div className="room-card-header">
+                        <div className="room-icon">
+                          <BookOpen size={24} />
+                        </div>
+                        <div className="room-title-section">
+                          <h3 className="room-title" onClick={() => window.location.hash = `#/room/${room.id}`}>{room.name}</h3>
+                          <span className="room-subject-badge">{room.subject}</span>
+                        </div>
+                        <div className="room-participants-badge">
+                          <Users size={16} />
+                          <span>{room.participants}</span>
                         </div>
                       </div>
-                      <div className="room-actions">
+                      
+                      <div className="room-card-body">
+                        <div className="room-status-row">
+                          {room.isActive ? (
+                            <div className="room-status-indicator active">
+                              <span className="status-dot"></span>
+                              <span>Active now</span>
+                            </div>
+                          ) : (
+                            <div className="room-status-indicator inactive">
+                              <span className="status-dot"></span>
+                              <span>{room.lastActive}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="room-card-footer">
                         <button 
-                          className="btn btn-sm btn-primary"
-                          onClick={() => window.location.hash = `#/room/${room.id}`}
+                          className="btn btn-join"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            window.location.hash = `#/room/${room.id}`
+                          }}
                         >
-                          Join
+                          <Users size={16} />
+                          Join Room
                         </button>
                         {room.role === 'owner' ? (
                           <button 
-                            className="btn btn-sm btn-danger"
+                            className="btn btn-delete"
                             onClick={(e) => {
                               e.stopPropagation()
                               handleDeleteRoom(room.id, room.name)
@@ -364,7 +382,7 @@ export default function Dashboard() {
                           </button>
                         ) : (
                           <button 
-                            className="btn btn-sm btn-ghost"
+                            className="btn btn-leave"
                             onClick={(e) => {
                               e.stopPropagation()
                               handleLeaveRoom(room.id, room.name)
