@@ -1,4 +1,5 @@
 import '../styles/pages.css'
+import '../styles/room-cards.css'
 import ThemeToggle from '../components/ThemeToggle'
 import { useAuth } from '../context/AuthContext'
 import { BookOpen, Users } from 'lucide-react'
@@ -142,23 +143,36 @@ export default function BrowseRooms(){
               <ul className="rooms-list">
                 {rooms.map(room => (
                   <li key={room.id} className="room-card">
-                    <div className="room-info">
-                      <h3 className="room-name">{room.name}</h3>
-                      <div className="room-details">
-                        <span className="room-subject">{room.subject}</span>
-                        <div className="room-participants">
-                          <Users size={16} className="room-participants-icon" />
-                          <span>{room.participants} participants</span>
-                        </div>
-                        <span className="room-status room-status-active">Active now</span>
+                    <div className="room-card-header">
+                      <div className="room-icon">
+                        <BookOpen size={24} />
+                      </div>
+                      <div className="room-title-section">
+                        <h3 className="room-title" onClick={() => window.location.hash = `#/room/${room.id}`}>{room.name}</h3>
+                        <span className="room-subject-badge">{room.subject}</span>
+                      </div>
+                      <div className="room-participants-badge">
+                        <Users size={16} />
+                        <span>{room.participants}</span>
                       </div>
                     </div>
-                    <div className="room-actions">
+                    
+                    <div className="room-card-body">
+                      <div className="room-status-row">
+                        <div className="room-status-indicator active">
+                          <span className="status-dot"></span>
+                          <span>Active now</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="room-card-footer">
                       <button 
-                        className="btn btn-primary btn-sm" 
+                        className="btn btn-join"
                         onClick={() => handleJoinRoom(room.id)}
                         disabled={joiningRoom === room.id}
                       >
+                        <Users size={16} />
                         {joiningRoom === room.id ? 'Joining...' : 'Join Room'}
                       </button>
                     </div>
