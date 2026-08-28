@@ -5,11 +5,21 @@ import { useTheme } from '../context/ThemeContext'
 import ProtectedRoute from '../components/ProtectedRoute'
 import { useAuth } from '../context/AuthContext'
 import { BookOpen } from 'lucide-react'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 export default function Settings() {
   const { theme, setThemeMode } = useTheme()
   const { logout } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
+  
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+    variant: 'danger'
+  })
   const [settings, setSettings] = useState({
     // Notifications
     emailNotifications: true,
@@ -81,23 +91,29 @@ export default function Settings() {
     }
   }
 
-  const handleDeleteAccount = async () => {
-    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      // ============================================
-      // BACKEND INTEGRATION PLACEHOLDER
-      // ============================================
-      // Replace this with actual account deletion logic
-      // Example:
-      // const response = await fetch('/api/user/account', {
-      //   method: 'DELETE'
-      // })
-      // if (response.ok) {
-      //     window.location.hash = '#/login'
-      // }
-      
-      console.log('Account deletion requested')
-      alert('Account deletion requires backend integration')
-    }
+  const handleDeleteAccount = () => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Account',
+      message: 'Are you sure you want to delete your account? This action cannot be undone.',
+      onConfirm: () => {
+        // ============================================
+        // BACKEND INTEGRATION PLACEHOLDER
+        // ============================================
+        // Replace this with actual account deletion logic
+        // Example:
+        // const response = await fetch('/api/user/account', {
+        //   method: 'DELETE'
+        // })
+        // if (response.ok) {
+        //     window.location.hash = '#/login'
+        // }
+        
+        console.log('Account deletion requested')
+        alert('Account deletion requires backend integration')
+      },
+      variant: 'danger'
+    })
   }
 
   return (
@@ -346,7 +362,7 @@ export default function Settings() {
                   <div className="settings-item-description">Sign out of your account</div>
                 </div>
                 <button
-                  className="btn btn-sm btn-danger"
+                  className="btn btn-sm btn-danger btn-danger-themed"
                   onClick={logout}
                 >
                   Sign Out
@@ -358,7 +374,7 @@ export default function Settings() {
                   <div className="settings-item-description">Permanently delete your account and all data</div>
                 </div>
                 <button
-                  className="btn btn-sm btn-danger"
+                  className="btn btn-sm btn-danger btn-danger-themed"
                   onClick={handleDeleteAccount}
                 >
                   Delete Account
@@ -367,15 +383,13 @@ export default function Settings() {
             </div>
 
             {/* Save Button */}
-            <div className="settings-actions">
-              <button
-                className="btn btn-primary"
-                onClick={handleSave}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
+            <button
+              className="btn btn-primary btn-lg btn-save-settings"
+              onClick={handleSave}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Saving...' : 'Save Changes'}
+            </button>
           </div>
         </div>
       </div>
@@ -383,6 +397,15 @@ export default function Settings() {
       <footer className="page-footer">
         <p>© {new Date().getFullYear()} CollaborativeApp — Built for students</p>
       </footer>
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        variant={confirmDialog.variant}
+      />
     </div>
     </ProtectedRoute>
   )

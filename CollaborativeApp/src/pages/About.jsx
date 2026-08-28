@@ -1,7 +1,7 @@
 import '../styles/pages.css'
 import ThemeToggle from '../components/ThemeToggle'
 import { useAuth } from '../context/AuthContext'
-import { BookOpen } from 'lucide-react'
+import { BookOpen, Target, Sparkles, Users, Award, Zap, Globe, Heart } from 'lucide-react'
 
 export default function About(){
   const { isAuthenticated } = useAuth()
@@ -39,50 +39,124 @@ export default function About(){
 
       <div className="page-content">
         <div className="page-inner">
-          <h1 className="page-title">About CollaborativeApp</h1>
-          <p className="page-subtitle">Built to help students study together — a lightweight prototype for live collaboration and study tools.</p>
-          
-          <div className="about-content">
-            <div className="about-section">
-              <h2 className="about-section-title">
-                <span className="about-section-icon">🎯</span>
-                Our Mission
-              </h2>
-              <div className="about-section-content">
-                <p>CollaborativeApp is designed to make group study sessions effortless and engaging. We believe that learning together is better than learning alone, and our platform provides the tools students need to collaborate effectively in real-time.</p>
+          {/* Hero Section */}
+          <div className="about-hero">
+            <div className="about-hero-content">
+              <div className="about-hero-badge">
+                <Target size={16} />
+                <span>Our Story</span>
               </div>
-            </div>
-
-            <div className="about-section">
-              <h2 className="about-section-title">
-                <span className="about-section-icon">✨</span>
-                What We Offer
-              </h2>
-              <div className="about-section-content">
-                <p>Our platform combines essential study tools with AI-driven insights to help students and teams maximize their productivity and learning outcomes. From shared notes to live collaboration, we've got everything you need for successful study sessions.</p>
-              </div>
-            </div>
-
-            <div className="about-section">
-              <h2 className="about-section-title">
-                <span className="about-section-icon">👥</span>
-                Our Team
-              </h2>
-              <div className="about-section-content">
-                <p>Built by students, for students. Our team understands the challenges of collaborative learning and has designed this platform with real student needs in mind.</p>
-                
-                <div className="team-grid">
-                  <div className="team-member">
-                    <div className="team-member-avatar">AA</div>
-                    <h3 className="team-member-name">Adrian Philip Amihan</h3>
-                    <p className="team-member-role">Co-Founder & Developer</p>
-                  </div>
-                  <div className="team-member">
-                    <div className="team-member-avatar">MA</div>
-                    <h3 className="team-member-name">Matthew Adami</h3>
-                    <p className="team-member-role">Co-Founder & Developer</p>
-                  </div>
+              <h1 className="about-hero-title">Empowering Students Through Collaboration</h1>
+              <p className="about-hero-description">
+                CollaborativeApp was built with a simple mission: to make group study sessions effortless, engaging, and effective. We believe that learning together is better than learning alone.
+              </p>
+              <div className="about-hero-stats">
+                <div className="about-stat">
+                  <div className="about-stat-value">10K+</div>
+                  <div className="about-stat-label">Students</div>
                 </div>
+                <div className="about-stat-divider"></div>
+                <div className="about-stat">
+                  <div className="about-stat-value">500+</div>
+                  <div className="about-stat-label">Study Rooms</div>
+                </div>
+                <div className="about-stat-divider"></div>
+                <div className="about-stat">
+                  <div className="about-stat-value">50K+</div>
+                  <div className="about-stat-label">Study Hours</div>
+                </div>
+              </div>
+            </div>
+            <div className="about-hero-visual">
+              <div className="about-hero-icon">
+                <Users size={120} />
+              </div>
+            </div>
+          </div>
+
+          {/* Mission Section */}
+          <div className="about-mission">
+            <div className="about-mission-icon">
+              <Target size={48} />
+            </div>
+            <h2 className="about-mission-title">Our Mission</h2>
+            <p className="about-mission-text">
+              We're committed to transforming how students learn together by providing intuitive tools that foster real-time collaboration, seamless communication, and effective study management. Every feature we build is designed with the student experience at its core.
+            </p>
+          </div>
+
+          {/* Values Grid */}
+          <div className="about-values">
+            <h2 className="about-section-heading">What We Stand For</h2>
+            <div className="values-grid">
+              <div className="value-card">
+                <div className="value-icon">
+                  <Sparkles size={32} />
+                </div>
+                <h3 className="value-title">Innovation</h3>
+                <p className="value-description">Continuously improving our platform with cutting-edge features and AI-driven insights.</p>
+              </div>
+              <div className="value-card">
+                <div className="value-icon">
+                  <Heart size={32} />
+                </div>
+                <h3 className="value-title">Community</h3>
+                <p className="value-description">Building a supportive environment where students can learn and grow together.</p>
+              </div>
+              <div className="value-card">
+                <div className="value-icon">
+                  <Zap size={32} />
+                </div>
+                <h3 className="value-title">Efficiency</h3>
+                <p className="value-description">Streamlining study workflows to maximize productivity and minimize friction.</p>
+              </div>
+              <div className="value-card">
+                <div className="value-icon">
+                  <Globe size={32} />
+                </div>
+                <h3 className="value-title">Accessibility</h3>
+                <p className="value-description">Making quality study tools available to students everywhere, regardless of location.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Team Section */}
+          <div className="about-team">
+            <h2 className="about-section-heading">Meet Our Team</h2>
+            <p className="about-section-subheading">Built by students, for students</p>
+            <div className="team-grid-enhanced">
+              <div className="team-card">
+                <div className="team-avatar-enhanced">
+                  <div className="team-avatar-initials">AA</div>
+                </div>
+                <div className="team-info">
+                  <h3 className="team-name">Adrian Philip Amihan</h3>
+                  <p className="team-role">Co-Founder & Developer</p>
+                  <p className="team-bio">Passionate about creating tools that make learning more collaborative and effective.</p>
+                </div>
+              </div>
+              <div className="team-card">
+                <div className="team-avatar-enhanced">
+                  <div className="team-avatar-initials">MA</div>
+                </div>
+                <div className="team-info">
+                  <h3 className="team-name">Matthew Adami</h3>
+                  <p className="team-role">Co-Founder & Developer</p>
+                  <p className="team-bio">Dedicated to building intuitive interfaces that enhance the student learning experience.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA Section */}
+          <div className="about-cta">
+            <div className="about-cta-content">
+              <Award size={48} className="about-cta-icon" />
+              <h2 className="about-cta-title">Ready to Transform Your Study Sessions?</h2>
+              <p className="about-cta-text">Join thousands of students who are already learning more effectively with CollaborativeApp.</p>
+              <div className="about-cta-buttons">
+                <a href="#/signup" className="btn btn-primary btn-lg">Get Started Free</a>
+                <a href="#/features" className="btn btn-ghost btn-lg">Explore Features</a>
               </div>
             </div>
           </div>
@@ -91,6 +165,10 @@ export default function About(){
 
       <footer className="page-footer">
         <p>© {new Date().getFullYear()} CollaborativeApp — Built for students</p>
+        <div className="page-footer-links">
+          <a href="#/privacy">Privacy Policy</a>
+          <a href="#/terms">Terms of Service</a>
+        </div>
       </footer>
     </div>
   )

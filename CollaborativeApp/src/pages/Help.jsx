@@ -2,7 +2,7 @@ import { useState } from 'react'
 import '../styles/pages.css'
 import ThemeToggle from '../components/ThemeToggle'
 import { useAuth } from '../context/AuthContext'
-import { BookOpen } from 'lucide-react'
+import { BookOpen, Mail, Users, Rocket, MessageSquare, Calendar, Paperclip, MessageCircle } from 'lucide-react'
 
 export default function Help() {
   const { isAuthenticated } = useAuth()
@@ -297,15 +297,15 @@ export default function Help() {
                     <h3>Other Ways to Reach Us</h3>
                     <div className="contact-links">
                       <a href="mailto:support@collaborativeapp.com" className="contact-link">
-                        <span className="contact-link-icon">📧</span>
+                        <Mail className="contact-link-icon" />
                         support@collaborativeapp.com
                       </a>
                       <a href="#" className="contact-link">
-                        <span className="contact-link-icon">🐦</span>
+                        <MessageSquare className="contact-link-icon" />
                         @CollaborativeApp
                       </a>
                       <a href="#" className="contact-link">
-                        <span className="contact-link-icon">💬</span>
+                        <MessageCircle className="contact-link-icon" />
                         Discord Community
                       </a>
                     </div>
@@ -318,7 +318,7 @@ export default function Help() {
                   <h2>User Guides</h2>
                   <div className="guides-list">
                     <div className="guide-item">
-                      <div className="guide-icon">🚀</div>
+                      <Rocket className="guide-icon" />
                       <div className="guide-content">
                         <h3>Getting Started</h3>
                         <p>Learn the basics of CollaborativeApp and set up your profile</p>
@@ -326,7 +326,7 @@ export default function Help() {
                       </div>
                     </div>
                     <div className="guide-item">
-                      <div className="guide-icon">👥</div>
+                      <Users className="guide-icon" />
                       <div className="guide-content">
                         <h3>Creating Study Rooms</h3>
                         <p>Step-by-step guide to creating and managing study rooms</p>
@@ -334,7 +334,7 @@ export default function Help() {
                       </div>
                     </div>
                     <div className="guide-item">
-                      <div className="guide-icon">💬</div>
+                      <MessageSquare className="guide-icon" />
                       <div className="guide-content">
                         <h3>Using Chat & Collaboration</h3>
                         <p>Make the most of real-time chat and collaboration features</p>
@@ -342,7 +342,7 @@ export default function Help() {
                       </div>
                     </div>
                     <div className="guide-item">
-                      <div className="guide-icon">📅</div>
+                      <Calendar className="guide-icon" />
                       <div className="guide-content">
                         <h3>Scheduling Sessions</h3>
                         <p>How to schedule and manage study sessions with your group</p>
@@ -350,7 +350,7 @@ export default function Help() {
                       </div>
                     </div>
                     <div className="guide-item">
-                      <div className="guide-icon">📎</div>
+                      <Paperclip className="guide-icon" />
                       <div className="guide-content">
                         <h3>Sharing Resources</h3>
                         <p>Upload, organize, and share study materials effectively</p>
@@ -367,6 +367,11 @@ export default function Help() {
 
       <footer className="page-footer">
         <p>© {new Date().getFullYear()} CollaborativeApp — Built for students</p>
+        <div className="page-footer-links">
+          <a href="#/privacy">Privacy Policy</a>
+          <a href="#/terms">Terms of Service</a>
+          <a href="#/about">About</a>
+        </div>
       </footer>
     </div>
   )

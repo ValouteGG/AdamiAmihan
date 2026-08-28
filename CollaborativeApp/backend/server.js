@@ -111,6 +111,7 @@ app.post('/api/rooms/:roomId/schedules', roomController.createSchedule);
 
 // Dashboard routes
 app.get('/api/dashboard', roomController.getDashboardData);
+app.delete('/api/dashboard/activity', roomController.clearUserActivity);
 
 // WebRTC Signaling Server
 const activeCalls = new Map();
