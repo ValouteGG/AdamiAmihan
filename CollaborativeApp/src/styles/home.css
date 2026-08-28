@@ -139,9 +139,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 80px;
   background: var(--color-bg-accent);
   border-radius: var(--radius-2xl);
+}
+
+.hero-icon svg {
+  stroke: #000000;
+  stroke-width: 2;
+  fill: none;
+}
+
+[data-theme="dark"] .hero-icon svg {
+  stroke: #ffffff;
 }
 
 .hero::before {
@@ -357,16 +366,33 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-bg-accent);
+  background: #f3f4f6;
   border-radius: var(--radius-xl);
   margin-bottom: var(--space-4);
-  font-size: var(--text-2xl);
   transition: all var(--transition-base);
+}
+
+.feature-icon svg {
+  stroke: #000000;
+  stroke-width: 2;
+  fill: none;
+}
+
+[data-theme="dark"] .feature-icon {
+  background: #374151;
+}
+
+[data-theme="dark"] .feature-icon svg {
+  stroke: #ffffff;
 }
 
 .feature:hover .feature-icon {
   background: var(--gradient-primary);
   transform: scale(1.1) rotate(5deg);
+}
+
+.feature:hover .feature-icon svg {
+  stroke: #ffffff;
 }
 
 .feature h4 {

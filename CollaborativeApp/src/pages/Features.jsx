@@ -1,25 +1,25 @@
 import '../styles/pages.css'
 import ThemeToggle from '../components/ThemeToggle'
 import { useAuth } from '../context/AuthContext'
-import { BookOpen } from 'lucide-react'
+import { BookOpen, Target, FileText, Clipboard, Trophy, Mic, Video, Timer, Bot, Palette, BarChart, Check, Clock } from 'lucide-react'
 
 export default function Features(){
   const { isAuthenticated, user } = useAuth()
   
   const coreFeatures = [
-    { icon: '🎯', title: 'Live Study Rooms', description: 'Create temporary rooms for group sessions with synced cursors and voice chat.', status: 'available' },
-    { icon: '📝', title: 'Shared Notes', description: 'Collaborative documents with version history and highlights.', status: 'available' },
-    { icon: '📋', title: 'Assignments & Tasks', description: 'Track deadlines, assign work, and get reminders.', status: 'available' },
-    { icon: '🏆', title: 'Study Gamification', description: 'Earn badges, streaks, and friendly leaderboards to stay motivated.', status: 'available' },
+    { icon: <Target />, title: 'Live Study Rooms', description: 'Create temporary rooms for group sessions with synced cursors and voice chat.', status: 'available' },
+    { icon: <FileText />, title: 'Shared Notes', description: 'Collaborative documents with version history and highlights.', status: 'available' },
+    { icon: <Clipboard />, title: 'Assignments & Tasks', description: 'Track deadlines, assign work, and get reminders.', status: 'available' },
+    { icon: <Trophy />, title: 'Study Gamification', description: 'Earn badges, streaks, and friendly leaderboards to stay motivated.', status: 'available' },
   ]
 
   const advancedFeatures = [
-    { icon: '🎙️', title: 'Voice Chat Integration', description: 'Crystal-clear audio communication during study sessions.', status: 'available' },
-    { icon: '📹', title: 'Video Call Integration', description: 'Face-to-face video collaboration with screen sharing capabilities.', status: 'available' },
-    { icon: '⏱️', title: 'Productivity Timers', description: 'Built-in Pomodoro method and customizable timer settings.', status: 'coming-soon' },
-    { icon: '🤖', title: 'AI Study Insights', description: 'Automated tracking of challenging lessons with targeted assistance.', status: 'coming-soon' },
-    { icon: '🎨', title: 'Collaborative Whiteboard', description: 'Shared digital whiteboards for real-time brainstorming sessions.', status: 'coming-soon' },
-    { icon: '📊', title: 'Performance Analytics', description: 'Comparative analysis of historical and current performance scores.', status: 'coming-soon' },
+    { icon: <Mic />, title: 'Voice Chat Integration', description: 'Crystal-clear audio communication during study sessions.', status: 'available' },
+    { icon: <Video />, title: 'Video Call Integration', description: 'Face-to-face video collaboration with screen sharing capabilities.', status: 'available' },
+    { icon: <Timer />, title: 'Productivity Timers', description: 'Built-in Pomodoro method and customizable timer settings.', status: 'coming-soon' },
+    { icon: <Bot />, title: 'AI Study Insights', description: 'Automated tracking of challenging lessons with targeted assistance.', status: 'coming-soon' },
+    { icon: <Palette />, title: 'Collaborative Whiteboard', description: 'Shared digital whiteboards for real-time brainstorming sessions.', status: 'coming-soon' },
+    { icon: <BarChart />, title: 'Performance Analytics', description: 'Comparative analysis of historical and current performance scores.', status: 'coming-soon' },
   ]
 
   return (
@@ -68,7 +68,7 @@ export default function Features(){
                     <h3 className="feature-item-title">{feature.title}</h3>
                     <p className="feature-item-description">{feature.description}</p>
                     <span className={`feature-item-status feature-item-status-${feature.status}`}>
-                      {feature.status === 'available' ? '✓ Available' : '🔜 Coming Soon'}
+                      {feature.status === 'available' ? <><Check size={14} /> Available</> : <><Clock size={14} /> Coming Soon</>}
                     </span>
                   </div>
                 </div>
@@ -84,7 +84,7 @@ export default function Features(){
                     <h3 className="feature-item-title">{feature.title}</h3>
                     <p className="feature-item-description">{feature.description}</p>
                     <span className={`feature-item-status feature-item-status-${feature.status}`}>
-                      {feature.status === 'available' ? '✓ Available' : '🔜 Coming Soon'}
+                      {feature.status === 'available' ? <><Check size={14} /> Available</> : <><Clock size={14} /> Coming Soon</>}
                     </span>
                   </div>
                 </div>
@@ -96,6 +96,11 @@ export default function Features(){
 
       <footer className="page-footer">
         <p>© {new Date().getFullYear()} CollaborativeApp — Built for students</p>
+        <div className="page-footer-links">
+          <a href="#/privacy">Privacy Policy</a>
+          <a href="#/terms">Terms of Service</a>
+          <a href="#/about">About</a>
+        </div>
       </footer>
     </div>
   )

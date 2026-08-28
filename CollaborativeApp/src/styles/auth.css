@@ -104,6 +104,16 @@
   z-index: 10;
 }
 
+.auth-theme-toggle svg {
+  stroke: #000000;
+  stroke-width: 2;
+  fill: none;
+}
+
+[data-theme="dark"] .auth-theme-toggle svg {
+  stroke: #ffffff;
+}
+
 .auth-title {
   font-size: var(--text-3xl);
   font-weight: var(--font-weight-bold);

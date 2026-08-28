@@ -3,6 +3,7 @@ import '../styles/pages.css'
 import ThemeToggle from '../components/ThemeToggle'
 import ProtectedRoute from '../components/ProtectedRoute'
 import { supabase } from '../config/supabase'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 export default function RoomDashboard() {
   const [activeTab, setActiveTab] = useState('chat')
@@ -15,6 +16,15 @@ export default function RoomDashboard() {
   const [isOwner, setIsOwner] = useState(false)
   const [room, setRoom] = useState(null)
   const [roomLoading, setRoomLoading] = useState(true)
+  
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+    variant: 'danger'
+  })
   
   // Schedule form state
   const [showScheduleForm, setShowScheduleForm] = useState(false)
@@ -249,82 +259,109 @@ export default function RoomDashboard() {
     }
   }
 
-  const handleLeaveRoom = async () => {
-    if (window.confirm('Are you sure you want to leave this room?')) {
-      try {
-        setLeavingRoom(true)
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (!session?.access_token) {
-          alert('You must be logged in to leave a room')
-          return
-        }
-
-        const response = await fetch(`http://localhost:4002/api/rooms/${room.id}/leave`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          }
-        })
-
-        const data = await response.json()
-
-        if (response.ok) {
-          window.location.hash = '#/dashboard'
-        } else {
-          alert(data.error || 'Failed to leave room')
-        }
-      } catch (err) {
-        console.error('Error leaving room:', err)
-        alert('Failed to leave room. Please try again.')
-      } finally {
-        setLeavingRoom(false)
-      }
-    }
+  const handleLeaveRoom = () => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Leave Room',
+      message: 'Are you sure you want to leave this room?',
+      onConfirm: () => {
+        leaveRoom()
+      },
+      variant: 'warning'
+    })
   }
 
-  const handleDeleteRoom = async () => {
-    if (window.confirm(`Are you sure you want to delete "${room.name}"? This action cannot be undone and will remove all participants, sessions, and data.`)) {
-      try {
-        setDeletingRoom(true)
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (!session?.access_token) {
-          alert('You must be logged in to delete a room')
-          return
-        }
-
-        const response = await fetch(`http://localhost:4002/api/rooms/${room.id}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          }
-        })
-
-        const data = await response.json()
-
-        if (response.ok) {
-          window.location.hash = '#/dashboard'
-        } else {
-          alert(data.error || 'Failed to delete room')
-        }
-      } catch (err) {
-        console.error('Error deleting room:', err)
-        alert('Failed to delete room. Please try again.')
-      } finally {
-        setDeletingRoom(false)
-      }
-    }
-  }
-
-  const handleRemoveParticipant = async (userId, userName) => {
-    if (!window.confirm(`Are you sure you want to remove "${userName}" from this room?`)) {
-      return
-    }
-
+  const leaveRoom = async () => {
     try {
+      setLeavingRoom(true)
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        alert('You must be logged in to leave a room')
+        return
+      }
+
+      const response = await fetch(`http://localhost:4002/api/rooms/${room.id}/leave`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        window.location.hash = '#/dashboard'
+      } else {
+        alert(data.error || 'Failed to leave room')
+      }
+    } catch (err) {
+      console.error('Error leaving room:', err)
+      alert('Failed to leave room. Please try again.')
+    } finally {
+      setLeavingRoom(false)
+    }
+  }
+
+  const handleDeleteRoom = () => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Room',
+      message: `Are you sure you want to delete "${room.name}"? This action cannot be undone and will remove all participants, sessions, and data.`,
+      onConfirm: () => {
+        deleteRoom()
+      },
+      variant: 'danger'
+    })
+  }
+
+  const deleteRoom = async () => {
+    try {
+      setDeletingRoom(true)
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        alert('You must be logged in to delete a room')
+        return
+      }
+
+      const response = await fetch(`http://localhost:4002/api/rooms/${room.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        window.location.hash = '#/dashboard'
+      } else {
+        alert(data.error || 'Failed to delete room')
+      }
+    } catch (err) {
+      console.error('Error deleting room:', err)
+      alert('Failed to delete room. Please try again.')
+    } finally {
+      setDeletingRoom(false)
+    }
+  }
+
+  const handleRemoveParticipant = (userId, userName) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Remove Participant',
+      message: `Are you sure you want to remove "${userName}" from this room?`,
+      onConfirm: () => {
+        removeParticipant(userId)
+      },
+      variant: 'danger'
+    })
+  }
+
+  const removeParticipant = async (userId) => {    try {
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session?.access_token) {

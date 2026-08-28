@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { BookOpen, Users, Clock, Award, MessageSquare, Paperclip, Mail, Trophy, Plus, Search, User, Timer, Palette, Layout, Calendar } from 'lucide-react'
+import { BookOpen, Users, Clock, Award, MessageSquare, Paperclip, Mail, Trophy, Plus, Search, User, Timer, Palette, Layout, Calendar, Sun, Moon, Zap, Trash2 } from 'lucide-react'
 import '../styles/pages.css'
 import '../styles/room-cards.css'
 import ThemeToggle from '../components/ThemeToggle'
 import ProtectedRoute from '../components/ProtectedRoute'
+import ConfirmDialog from '../components/ConfirmDialog'
 import { supabase } from '../config/supabase'
 
 export default function Dashboard() {
@@ -23,6 +24,15 @@ export default function Dashboard() {
   const [dataLoading, setDataLoading] = useState(true)
   const [leavingRoomId, setLeavingRoomId] = useState(null)
   const [deletingRoomId, setDeletingRoomId] = useState(null)
+
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+    variant: 'danger'
+  })
 
   // Fetch real data from backend
   const fetchDashboardData = async () => {
@@ -155,11 +165,19 @@ export default function Dashboard() {
     }
   }
 
-  const handleLeaveRoom = async (roomId, roomName) => {
-    if (!window.confirm(`Are you sure you want to leave "${roomName}"?`)) {
-      return
-    }
+  const handleLeaveRoom = (roomId, roomName) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Leave Room',
+      message: `Are you sure you want to leave "${roomName}"?`,
+      onConfirm: () => {
+        leaveRoom(roomId, roomName)
+      },
+      variant: 'warning'
+    })
+  }
 
+  const leaveRoom = async (roomId, roomName) => {
     try {
       setLeavingRoomId(roomId)
       const { data: { session } } = await supabase.auth.getSession()
@@ -193,11 +211,19 @@ export default function Dashboard() {
     }
   }
 
-  const handleDeleteRoom = async (roomId, roomName) => {
-    if (!window.confirm(`Are you sure you want to delete "${roomName}"? This action cannot be undone and will remove all participants, sessions, and data.`)) {
-      return
-    }
+  const handleDeleteRoom = (roomId, roomName) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Room',
+      message: `Are you sure you want to delete "${roomName}"? This action cannot be undone and will remove all participants, sessions, and data.`,
+      onConfirm: () => {
+        deleteRoom(roomId, roomName)
+      },
+      variant: 'danger'
+    })
+  }
 
+  const deleteRoom = async (roomId, roomName) => {
     try {
       setDeletingRoomId(roomId)
       const { data: { session } } = await supabase.auth.getSession()
@@ -231,6 +257,48 @@ export default function Dashboard() {
     }
   }
 
+  const handleClearActivity = () => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Clear Activity',
+      message: 'Are you sure you want to clear all recent activity? This action cannot be undone.',
+      onConfirm: () => {
+        clearActivity()
+      },
+      variant: 'danger'
+    })
+  }
+
+  const clearActivity = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        alert('You must be logged in to clear activity')
+        return
+      }
+
+      const response = await fetch('http://localhost:4002/api/dashboard/activity', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+
+      if (response.ok) {
+        setRecentActivity([])
+        alert('Recent activity cleared successfully')
+      } else {
+        const errorData = await response.json()
+        alert(errorData.error || 'Failed to clear activity')
+      }
+    } catch (err) {
+      console.error('Error clearing activity:', err)
+      alert('Failed to clear activity. Please try again.')
+    }
+  }
+
   return (
     <ProtectedRoute>
       <div className="page-root">
@@ -258,109 +326,143 @@ export default function Dashboard() {
 
       <div className="page-content">
         <div className="page-inner dashboard-inner">
-          <div className="dashboard-header">
-            <div className="dashboard-header-content">
-              <h1 className="page-title">Welcome back!</h1>
-              <p className="page-subtitle">Here's what's happening with your study groups</p>
+          {/* Enhanced Welcome Section */}
+          <div className="dashboard-welcome">
+            <div className="dashboard-welcome-content">
+              <div className="dashboard-welcome-badge">
+                <Clock size={16} />
+                <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              </div>
+              <h1 className="dashboard-welcome-title">Welcome back!</h1>
+              <p className="dashboard-welcome-subtitle">Here's what's happening with your study groups today</p>
             </div>
-            <button className="btn btn-primary" onClick={() => window.location.hash = '#/create'}>
+            <button className="btn btn-primary btn-lg" onClick={() => window.location.hash = '#/create'}>
               <Plus size={20} className="btn-icon" />
               Create Room
             </button>
           </div>
 
-          {/* Stats Grid */}
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon">
-                <BookOpen size={24} />
+          {/* Enhanced Stats Grid */}
+          <div className="stats-grid-enhanced">
+            <div className="stat-card-enhanced">
+              <div className="stat-card-background">
+                <BookOpen size={48} />
               </div>
-              <div className="stat-info">
-                <div className="stat-value">{stats.totalRooms}</div>
-                <div className="stat-label">Total Rooms</div>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon">
-                <Users size={24} />
-              </div>
-              <div className="stat-info">
-                <div className="stat-value">{stats.activeRooms}</div>
-                <div className="stat-label">Active Rooms</div>
+              <div className="stat-card-content">
+                <div className="stat-value-enhanced">{stats.totalRooms}</div>
+                <div className="stat-label-enhanced">Total Rooms</div>
+                <div className="stat-trend positive">
+                  <Trophy size={12} />
+                  <span>+2 this week</span>
+                </div>
               </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-icon">
-                <Clock size={24} />
+            <div className="stat-card-enhanced">
+              <div className="stat-card-background">
+                <Users size={48} />
               </div>
-              <div className="stat-info">
-                <div className="stat-value">{stats.totalHours}h</div>
-                <div className="stat-label">Study Hours</div>
+              <div className="stat-card-content">
+                <div className="stat-value-enhanced">{stats.activeRooms}</div>
+                <div className="stat-label-enhanced">Active Rooms</div>
+                <div className="stat-trend positive">
+                  <Trophy size={12} />
+                  <span>+1 this week</span>
+                </div>
               </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-icon">
-                <Award size={24} />
+            <div className="stat-card-enhanced">
+              <div className="stat-card-background">
+                <Clock size={48} />
               </div>
-              <div className="stat-info">
-                <div className="stat-value">{stats.streak}</div>
-                <div className="stat-label">Day Streak</div>
+              <div className="stat-card-content">
+                <div className="stat-value-enhanced">{stats.totalHours}h</div>
+                <div className="stat-label-enhanced">Study Hours</div>
+                <div className="stat-trend positive">
+                  <Trophy size={12} />
+                  <span>+5h this week</span>
+                </div>
+              </div>
+            </div>
+            <div className="stat-card-enhanced">
+              <div className="stat-card-background">
+                <Award size={48} />
+              </div>
+              <div className="stat-card-content">
+                <div className="stat-value-enhanced">{stats.streak}</div>
+                <div className="stat-label-enhanced">Day Streak</div>
+                <div className="stat-trend positive">
+                  <Trophy size={12} />
+                  <span>Keep it up!</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="dashboard-grid">
+          <div className="dashboard-grid-enhanced">
             {/* Recent Rooms */}
-            <div className="dashboard-section">
-              <div className="dashboard-section-header">
-                <h2 className="dashboard-section-title">Recent Rooms</h2>
+            <div className="dashboard-section-enhanced">
+              <div className="dashboard-section-header-enhanced">
+                <div className="dashboard-section-title-group">
+                  <div className="dashboard-section-icon">
+                    <BookOpen size={24} />
+                  </div>
+                  <div>
+                    <h2 className="dashboard-section-title-enhanced">Recent Rooms</h2>
+                    <p className="dashboard-section-subtitle">Your active study spaces</p>
+                  </div>
+                </div>
                 <a href="#/browse" className="btn btn-sm btn-ghost">View All</a>
               </div>
-              <div className="room-list">
+              <div className="room-list-enhanced">
                 {dataLoading ? (
-                  <div className="loading-state">Loading rooms...</div>
+                  <div className="loading-state-enhanced">Loading rooms...</div>
                 ) : recentRooms.length === 0 ? (
-                  <div className="empty-state">
-                    <BookOpen size={48} className="empty-icon" />
+                  <div className="empty-state-enhanced">
+                    <div className="empty-state-icon">
+                      <BookOpen size={64} />
+                    </div>
                     <h3>No rooms yet</h3>
                     <p>Create your first study room to get started</p>
+                    <button className="btn btn-primary" onClick={() => window.location.hash = '#/create'}>
+                      <Plus size={16} />
+                      Create Room
+                    </button>
                   </div>
                 ) : (
                   recentRooms.map(room => (
-                    <div key={room.id} className="room-card">
-                      <div className="room-card-header">
-                        <div className="room-icon">
-                          <BookOpen size={24} />
+                    <div key={room.id} className="room-card-enhanced">
+                      <div className="room-card-header-enhanced">
+                        <div className="room-icon-enhanced">
+                          <BookOpen size={32} />
                         </div>
-                        <div className="room-title-section">
-                          <h3 className="room-title" onClick={() => window.location.hash = `#/room/${room.id}`}>{room.name}</h3>
-                          <span className="room-subject-badge">{room.subject}</span>
+                        <div className="room-info-enhanced">
+                          <h3 className="room-title-enhanced" onClick={() => window.location.hash = `#/room/${room.id}`}>{room.name}</h3>
+                          <div className="room-meta">
+                            <span className="room-subject-badge-enhanced">{room.subject}</span>
+                            <div className="room-participants-enhanced">
+                              <Users size={14} />
+                              <span>{room.participants} participants</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="room-participants-badge">
-                          <Users size={16} />
-                          <span>{room.participants}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="room-card-body">
-                        <div className="room-status-row">
+                        <div className="room-status-enhanced">
                           {room.isActive ? (
-                            <div className="room-status-indicator active">
-                              <span className="status-dot"></span>
-                              <span>Active now</span>
+                            <div className="room-status-badge active">
+                              <span className="status-dot-enhanced"></span>
+                              <span>Active</span>
                             </div>
                           ) : (
-                            <div className="room-status-indicator inactive">
-                              <span className="status-dot"></span>
+                            <div className="room-status-badge inactive">
+                              <span className="status-dot-enhanced"></span>
                               <span>{room.lastActive}</span>
                             </div>
                           )}
                         </div>
                       </div>
                       
-                      <div className="room-card-footer">
+                      <div className="room-card-footer-enhanced">
                         <button 
-                          className="btn btn-join"
+                          className="btn btn-primary btn-sm"
                           onClick={(e) => {
                             e.stopPropagation()
                             window.location.hash = `#/room/${room.id}`
@@ -371,7 +473,7 @@ export default function Dashboard() {
                         </button>
                         {room.role === 'owner' ? (
                           <button 
-                            className="btn btn-delete"
+                            className="btn btn-danger btn-sm"
                             onClick={(e) => {
                               e.stopPropagation()
                               handleDeleteRoom(room.id, room.name)
@@ -382,7 +484,7 @@ export default function Dashboard() {
                           </button>
                         ) : (
                           <button 
-                            className="btn btn-leave"
+                            className="btn btn-secondary btn-sm"
                             onClick={(e) => {
                               e.stopPropagation()
                               handleLeaveRoom(room.id, room.name)
@@ -400,34 +502,50 @@ export default function Dashboard() {
             </div>
 
             {/* Upcoming Sessions */}
-            <div className="dashboard-section">
-              <div className="dashboard-section-header">
-                <h2 className="dashboard-section-title">Upcoming Sessions</h2>
+            <div className="dashboard-section-enhanced">
+              <div className="dashboard-section-header-enhanced">
+                <div className="dashboard-section-title-group">
+                  <div className="dashboard-section-icon">
+                    <Calendar size={24} />
+                  </div>
+                  <div>
+                    <h2 className="dashboard-section-title-enhanced">Upcoming Sessions</h2>
+                    <p className="dashboard-section-subtitle">Your scheduled study times</p>
+                  </div>
+                </div>
                 <a href="#/calendar" className="btn btn-sm btn-ghost">View Calendar</a>
               </div>
-              <div className="session-list">
+              <div className="session-list-enhanced">
                 {dataLoading ? (
-                  <div className="loading-state">Loading sessions...</div>
+                  <div className="loading-state-enhanced">Loading sessions...</div>
                 ) : upcomingSessions.length === 0 ? (
-                  <div className="empty-state">
-                    <Calendar size={48} className="empty-icon" />
+                  <div className="empty-state-enhanced">
+                    <div className="empty-state-icon">
+                      <Calendar size={64} />
+                    </div>
                     <h3>No upcoming sessions</h3>
                     <p>Schedule your first study session</p>
+                    <button className="btn btn-primary" onClick={() => window.location.hash = '#/calendar'}>
+                      <Calendar size={16} />
+                      Go to Calendar
+                    </button>
                   </div>
                 ) : (
                   upcomingSessions.map(session => (
-                    <div key={session.id} className="session-card" onClick={() => window.location.hash = `#/room/${session.roomId}`}>
-                      <div className="session-date">
-                        <div className="session-day">{session.date}</div>
-                        <div className="session-month">{session.month}</div>
-                        <div className="session-time">{session.time}</div>
+                    <div key={session.id} className="session-card-enhanced" onClick={() => window.location.hash = `#/room/${session.roomId}`}>
+                      <div className="session-date-enhanced">
+                        <div className="session-day-enhanced">{session.date}</div>
+                        <div className="session-month-enhanced">{session.month}</div>
+                        <div className="session-time-enhanced">{session.time}</div>
                       </div>
-                      <div className="session-info">
-                        <div className="session-title">{session.title}</div>
-                        <div className="session-room">{session.room}</div>
-                        <span className={`badge ${getSessionTypeColor(session.type)}`}>{session.type}</span>
+                      <div className="session-info-enhanced">
+                        <div className="session-title-enhanced">{session.title}</div>
+                        <div className="session-room-enhanced">{session.room}</div>
+                        <span className={`badge badge-enhanced ${getSessionTypeColor(session.type)}`}>{session.type}</span>
                       </div>
-                      <button className="btn btn-sm btn-ghost">→</button>
+                      <button className="btn btn-icon-only">
+                        <Plus size={20} className="rotate-45" />
+                      </button>
                     </div>
                   ))
                 )}
@@ -435,27 +553,49 @@ export default function Dashboard() {
             </div>
 
             {/* Recent Activity */}
-            <div className="dashboard-section">
-              <div className="dashboard-section-header">
-                <h2 className="dashboard-section-title">Recent Activity</h2>
-                <a href="#/notifications" className="btn btn-sm btn-ghost">View All</a>
+            <div className="dashboard-section-enhanced">
+              <div className="dashboard-section-header-enhanced">
+                <div className="dashboard-section-title-group">
+                  <div className="dashboard-section-icon">
+                    <MessageSquare size={24} />
+                  </div>
+                  <div>
+                    <h2 className="dashboard-section-title-enhanced">Recent Activity</h2>
+                    <p className="dashboard-section-subtitle">Your latest interactions</p>
+                  </div>
+                </div>
+                <div className="dashboard-section-actions">
+                  {recentActivity.length > 0 && (
+                    <button 
+                      className="btn btn-sm btn-danger-themed"
+                      onClick={handleClearActivity}
+                      title="Clear all activity"
+                    >
+                      <Trash2 size={16} />
+                      Clear
+                    </button>
+                  )}
+                  <a href="#/notifications" className="btn btn-sm btn-ghost">View All</a>
+                </div>
               </div>
-              <div className="activity-list">
+              <div className="activity-list-enhanced">
                 {dataLoading ? (
-                  <div className="loading-state">Loading activity...</div>
+                  <div className="loading-state-enhanced">Loading activity...</div>
                 ) : recentActivity.length === 0 ? (
-                  <div className="empty-state">
-                    <MessageSquare size={48} className="empty-icon" />
+                  <div className="empty-state-enhanced">
+                    <div className="empty-state-icon">
+                      <MessageSquare size={64} />
+                    </div>
                     <h3>No recent activity</h3>
                     <p>Your activity will appear here</p>
                   </div>
                 ) : (
                   recentActivity.map(activity => (
-                    <div key={activity.id} className="activity-item">
-                      <div className="activity-icon">{getActivityIcon(activity.type)}</div>
-                      <div className="activity-content">
-                        <div className="activity-text">{activity.text}</div>
-                        <div className="activity-time">{activity.time}</div>
+                    <div key={activity.id} className="activity-item-enhanced">
+                      <div className="activity-icon-enhanced">{getActivityIcon(activity.type)}</div>
+                      <div className="activity-content-enhanced">
+                        <div className="activity-text-enhanced">{activity.text}</div>
+                        <div className="activity-time-enhanced">{activity.time}</div>
                       </div>
                     </div>
                   ))
@@ -464,34 +604,54 @@ export default function Dashboard() {
             </div>
 
             {/* Quick Actions */}
-            <div className="dashboard-section">
-              <div className="dashboard-section-header">
-                <h2 className="dashboard-section-title">Quick Actions</h2>
+            <div className="dashboard-section-enhanced quick-actions-section">
+              <div className="dashboard-section-header-enhanced">
+                <div className="dashboard-section-title-group">
+                  <div className="dashboard-section-icon">
+                    <Zap size={24} />
+                  </div>
+                  <div>
+                    <h2 className="dashboard-section-title-enhanced">Quick Actions</h2>
+                    <p className="dashboard-section-subtitle">Common tasks at your fingertips</p>
+                  </div>
+                </div>
               </div>
-              <div className="quick-actions">
-                <button className="quick-action" onClick={() => window.location.hash = '#/create'}>
-                  <div className="quick-action-icon">➕</div>
-                  <div className="quick-action-label">Create Room</div>
+              <div className="quick-actions-enhanced">
+                <button className="quick-action-enhanced" onClick={() => window.location.hash = '#/create'}>
+                  <div className="quick-action-icon-enhanced primary">
+                    <Plus size={24} />
+                  </div>
+                  <div className="quick-action-label-enhanced">Create Room</div>
                 </button>
-                <button className="quick-action" onClick={() => window.location.hash = '#/browse'}>
-                  <div className="quick-action-icon">🔍</div>
-                  <div className="quick-action-label">Browse Rooms</div>
+                <button className="quick-action-enhanced" onClick={() => window.location.hash = '#/browse'}>
+                  <div className="quick-action-icon-enhanced secondary">
+                    <Search size={24} />
+                  </div>
+                  <div className="quick-action-label-enhanced">Browse Rooms</div>
                 </button>
-                <button className="quick-action" onClick={() => window.location.hash = '#/friends'}>
-                  <div className="quick-action-icon">👥</div>
-                  <div className="quick-action-label">Find Friends</div>
+                <button className="quick-action-enhanced" onClick={() => window.location.hash = '#/friends'}>
+                  <div className="quick-action-icon-enhanced accent">
+                    <Users size={24} />
+                  </div>
+                  <div className="quick-action-label-enhanced">Find Friends</div>
                 </button>
-                <button className="quick-action" onClick={() => window.location.hash = '#/timer'}>
-                  <div className="quick-action-icon">⏱️</div>
-                  <div className="quick-action-label">Study Timer</div>
+                <button className="quick-action-enhanced" onClick={() => window.location.hash = '#/timer'}>
+                  <div className="quick-action-icon-enhanced success">
+                    <Timer size={24} />
+                  </div>
+                  <div className="quick-action-label-enhanced">Study Timer</div>
                 </button>
-                <button className="quick-action" onClick={() => window.location.hash = '#/whiteboard'}>
-                  <div className="quick-action-icon">🎨</div>
-                  <div className="quick-action-label">Whiteboard</div>
+                <button className="quick-action-enhanced" onClick={() => window.location.hash = '#/whiteboard'}>
+                  <div className="quick-action-icon-enhanced warning">
+                    <Palette size={24} />
+                  </div>
+                  <div className="quick-action-label-enhanced">Whiteboard</div>
                 </button>
-                <button className="quick-action" onClick={() => window.location.hash = '#/messages'}>
-                  <div className="quick-action-icon">💬</div>
-                  <div className="quick-action-label">Messages</div>
+                <button className="quick-action-enhanced" onClick={() => window.location.hash = '#/messages'}>
+                  <div className="quick-action-icon-enhanced info">
+                    <MessageSquare size={24} />
+                  </div>
+                  <div className="quick-action-label-enhanced">Messages</div>
                 </button>
               </div>
             </div>
@@ -501,7 +661,21 @@ export default function Dashboard() {
 
       <footer className="page-footer">
         <p>© {new Date().getFullYear()} CollaborativeApp — Built for students</p>
+        <div className="page-footer-links">
+          <a href="#/privacy">Privacy Policy</a>
+          <a href="#/terms">Terms of Service</a>
+          <a href="#/about">About</a>
+        </div>
       </footer>
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        variant={confirmDialog.variant}
+      />
     </div>
     </ProtectedRoute>
   )

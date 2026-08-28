@@ -1,6 +1,7 @@
 import './styles/home.css'
 import ThemeToggle from './components/ThemeToggle'
 import { useAuth } from './context/AuthContext'
+import { Users, FileText, Calendar, Trophy, MessageSquare } from 'lucide-react'
 
 function Home() {
   const { isAuthenticated, user } = useAuth()
@@ -45,7 +46,7 @@ function Home() {
               </div>
             </div>
             <div className="hero-visual">
-              <div className="hero-icon">📚</div>
+              <div className="hero-icon"><MessageSquare size={64} /></div>
             </div>
           </section>
         ) : (
@@ -64,7 +65,7 @@ function Home() {
               </div>
             </div>
             <div className="hero-visual">
-              <div className="hero-icon">👥</div>
+              <div className="hero-icon"><Users size={64} /></div>
             </div>
           </section>
         )}
@@ -73,22 +74,22 @@ function Home() {
           <h3>Student-focused building blocks</h3>
           <div className="feature-grid">
             <article className="feature">
-              <div className="feature-icon">👥</div>
+              <div className="feature-icon"><Users size={32} /></div>
               <h4>Live Study Rooms</h4>
               <p>Create temporary rooms for group sessions with synced cursors and voice chat.</p>
             </article>
             <article className="feature">
-              <div className="feature-icon">📝</div>
+              <div className="feature-icon"><FileText size={32} /></div>
               <h4>Shared Notes</h4>
               <p>Collaborative documents with version history and highlights.</p>
             </article>
             <article className="feature">
-              <div className="feature-icon">📅</div>
+              <div className="feature-icon"><Calendar size={32} /></div>
               <h4>Assignments & Tasks</h4>
               <p>Track deadlines, assign work, and get reminders.</p>
             </article>
             <article className="feature">
-              <div className="feature-icon">🏆</div>
+              <div className="feature-icon"><Trophy size={32} /></div>
               <h4>Study Gamification</h4>
               <p>Earn badges, streaks, and friendly leaderboards to stay motivated.</p>
             </article>
@@ -133,8 +134,8 @@ function Home() {
       <footer className="site-footer">
         <div>© {new Date().getFullYear()} CollaborativeApp — Built for students</div>
         <div className="footer-links">
-          <a href="#">Privacy</a>
-          <a href="#">Terms</a>
+          <a href="#/privacy">Privacy Policy</a>
+          <a href="#/terms">Terms of Service</a>
         </div>
       </footer>
     </div>

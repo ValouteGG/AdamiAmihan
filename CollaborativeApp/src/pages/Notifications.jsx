@@ -1,154 +1,233 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import '../styles/pages.css'
 import ThemeToggle from '../components/ThemeToggle'
 import ProtectedRoute from '../components/ProtectedRoute'
+import { useAuth } from '../context/AuthContext'
+import { BookOpen, MessageSquare, Mail, Users, Bell, X, Check } from 'lucide-react'
+import { supabase } from '../config/supabase'
 
 export default function Notifications() {
+  const { isAuthenticated } = useAuth()
   const [filter, setFilter] = useState('all')
   const [isLoading, setIsLoading] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [notificationsLoading, setNotificationsLoading] = useState(true)
   
-  // Mock notifications data
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'room_invite',
-      title: 'Room Invitation',
-      message: 'Alice Johnson invited you to join "Physics Study Group"',
-      time: '2 hours ago',
-      read: false,
-      actions: ['accept', 'decline']
-    },
-    {
-      id: 2,
-      type: 'message',
-      title: 'New Message',
-      message: 'Bob Smith sent you a message in "Calculus Study Group"',
-      time: '5 hours ago',
-      read: false,
-      actions: ['view']
-    },
-    {
-      id: 3,
-      type: 'reminder',
-      title: 'Session Reminder',
-      message: 'Study session "Chemistry Review" starts in 30 minutes',
-      time: '30 minutes ago',
-      read: true,
-      actions: ['join']
-    },
-    {
-      id: 4,
-      type: 'resource',
-      title: 'New Resource',
-      message: 'Carol Davis uploaded "Practice Problems.pdf" to "Math Help"',
-      time: '1 day ago',
-      read: true,
-      actions: ['view']
-    },
-    {
-      id: 5,
-      type: 'system',
-      title: 'Account Update',
-      message: 'Your password was successfully changed',
-      time: '2 days ago',
-      read: true,
-      actions: []
-    },
-    {
-      id: 6,
-      type: 'room_invite',
-      title: 'Room Invitation',
-      message: 'David Lee invited you to join "Computer Science Lab"',
-      time: '3 days ago',
-      read: true,
-      actions: ['accept', 'decline']
+  // Fetch notifications from backend
+  const fetchNotifications = async () => {
+    try {
+      setNotificationsLoading(true)
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers = {
+        'Content-Type': 'application/json',
+      }
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+
+      try {
+        const response = await fetch('http://localhost:4002/api/notifications', {
+          headers
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setNotifications(data.notifications || [])
+        } else {
+          console.log('Notifications endpoint not available')
+          setNotifications([])
+        }
+      } catch (apiError) {
+        console.log('Notifications API call failed:', apiError.message)
+        setNotifications([])
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error)
+      setNotifications([])
+    } finally {
+      setNotificationsLoading(false)
     }
-  ])
+  }
+
+  // Initial fetch and set up polling for real-time updates
+  useEffect(() => {
+    fetchNotifications()
+    
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(() => {
+      fetchNotifications()
+    }, 30000)
+    
+    return () => clearInterval(interval)
+  }, [])
 
   const handleMarkAsRead = async (id) => {
-    // ============================================
-    // BACKEND INTEGRATION PLACEHOLDER
-    // ============================================
-    // Replace this with actual API call
-    // Example:
-    // const response = await fetch(`/api/notifications/${id}/read`, {
-    //   method: 'POST'
-    // })
-    
-    setNotifications(prev =>
-      prev.map(notif =>
-        notif.id === id ? { ...notif, read: true } : notif
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers = {
+        'Content-Type': 'application/json',
+      }
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+
+      const response = await fetch(`http://localhost:4002/api/notifications/${id}/read`, {
+        method: 'POST',
+        headers
+      })
+
+      if (response.ok) {
+        setNotifications(prev =>
+          prev.map(notif =>
+            notif.id === id ? { ...notif, read: true } : notif
+          )
+        )
+      } else {
+        // Fallback to local update if backend fails
+        setNotifications(prev =>
+          prev.map(notif =>
+            notif.id === id ? { ...notif, read: true } : notif
+          )
+        )
+      }
+    } catch (err) {
+      console.error('Error marking as read:', err)
+      // Fallback to local update
+      setNotifications(prev =>
+        prev.map(notif =>
+          notif.id === id ? { ...notif, read: true } : notif
+        )
       )
-    )
-    console.log('Marked as read:', id)
+    }
   }
 
   const handleMarkAllAsRead = async () => {
     setIsLoading(true)
     try {
-      // ============================================
-      // BACKEND INTEGRATION PLACEHOLDER
-      // ============================================
-      // Replace this with actual API call
-      // Example:
-      // const response = await fetch('/api/notifications/read-all', {
-      //   method: 'POST'
-      // })
+      const { data: { session } } = await supabase.auth.getSession()
       
-      await new Promise(resolve => setTimeout(resolve, 500))
+      const headers = {
+        'Content-Type': 'application/json',
+      }
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+
+      const response = await fetch('http://localhost:4002/api/notifications/read-all', {
+        method: 'POST',
+        headers
+      })
+
+      if (response.ok) {
+        setNotifications(prev =>
+          prev.map(notif => ({ ...notif, read: true }))
+        )
+      } else {
+        // Fallback to local update
+        setNotifications(prev =>
+          prev.map(notif => ({ ...notif, read: true }))
+        )
+      }
+    } catch (err) {
+      console.error('Error marking all as read:', err)
+      // Fallback to local update
       setNotifications(prev =>
         prev.map(notif => ({ ...notif, read: true }))
       )
-      console.log('All notifications marked as read')
-    } catch (err) {
-      console.error('Error marking all as read:', err)
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleAction = async (id, action) => {
-    // ============================================
-    // BACKEND INTEGRATION PLACEHOLDER
-    // ============================================
-    // Replace this with actual API call based on action type
-    // Example:
-    // const response = await fetch(`/api/notifications/${id}/${action}`, {
-    //   method: 'POST'
-    // })
-    
-    console.log(`Action ${action} for notification ${id}`)
-    
-    if (action === 'accept') {
-      alert('Room invitation accepted (backend integration required)')
-    } else if (action === 'decline') {
-      setNotifications(prev => prev.filter(n => n.id !== id))
-    } else if (action === 'view') {
-      alert('Navigate to relevant content (backend integration required)')
-    } else if (action === 'join') {
-      alert('Join session (backend integration required)')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers = {
+        'Content-Type': 'application/json',
+      }
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+
+      if (action === 'accept') {
+        const response = await fetch(`http://localhost:4002/api/notifications/${id}/accept`, {
+          method: 'POST',
+          headers
+        })
+        if (response.ok) {
+          alert('Room invitation accepted!')
+          fetchNotifications()
+        } else {
+          alert('Failed to accept invitation')
+        }
+      } else if (action === 'decline') {
+        const response = await fetch(`http://localhost:4002/api/notifications/${id}/decline`, {
+          method: 'POST',
+          headers
+        })
+        if (response.ok) {
+          setNotifications(prev => prev.filter(n => n.id !== id))
+        }
+      } else if (action === 'view') {
+        // Navigate to the relevant content based on notification type
+        const notification = notifications.find(n => n.id === id)
+        if (notification) {
+          if (notification.type === 'message' && notification.roomId) {
+            window.location.hash = `#/room/${notification.roomId}`
+          } else if (notification.type === 'private_message' && notification.userId) {
+            window.location.hash = `#/messages?user=${notification.userId}`
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error handling action:', err)
+      alert('Failed to perform action')
     }
   }
 
   const handleDelete = async (id) => {
-    // ============================================
-    // BACKEND INTEGRATION PLACEHOLDER
-    // ============================================
-    // Replace this with actual API call
-    // Example:
-    // const response = await fetch(`/api/notifications/${id}`, {
-    //   method: 'DELETE'
-    // })
-    
-    setNotifications(prev => prev.filter(n => n.id !== id))
-    console.log('Deleted notification:', id)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers = {
+        'Content-Type': 'application/json',
+      }
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+
+      const response = await fetch(`http://localhost:4002/api/notifications/${id}`, {
+        method: 'DELETE',
+        headers
+      })
+
+      if (response.ok) {
+        setNotifications(prev => prev.filter(n => n.id !== id))
+      } else {
+        // Fallback to local delete
+        setNotifications(prev => prev.filter(n => n.id !== id))
+      }
+    } catch (err) {
+      console.error('Error deleting notification:', err)
+      // Fallback to local delete
+      setNotifications(prev => prev.filter(n => n.id !== id))
+    }
   }
 
   const filteredNotifications = notifications.filter(notif => {
     if (filter === 'all') return true
     if (filter === 'unread') return !notif.read
     if (filter === 'room_invites') return notif.type === 'room_invite'
-    if (filter === 'messages') return notif.type === 'message'
+    if (filter === 'messages') return notif.type === 'message' || notif.type === 'private_message'
+    if (filter === 'group_chats') return notif.type === 'group_message'
     return true
   })
 
@@ -156,12 +235,13 @@ export default function Notifications() {
 
   const getNotificationIcon = (type) => {
     switch (type) {
-      case 'room_invite': return '📨'
-      case 'message': return '💬'
-      case 'reminder': return '⏰'
-      case 'resource': return '📎'
-      case 'system': return '⚙️'
-      default: return '🔔'
+      case 'room_invite': return <Users size={20} />
+      case 'message': return <MessageSquare size={20} />
+      case 'private_message': return <Mail size={20} />
+      case 'group_message': return <Users size={20} />
+      case 'reminder': return <Bell size={20} />
+      case 'achievement': return <Check size={20} />
+      default: return <Bell size={20} />
     }
   }
 
@@ -170,15 +250,24 @@ export default function Notifications() {
       <div className="page-root">
         <header className="page-header">
           <div className="page-header-brand">
-            <a href="#/" className="page-header-logo">📚</a>
-            <a href="#/" className="page-header-title">CollaborativeApp</a>
+            <a href="#/" className="page-header-logo">
+              <BookOpen size={24} />
+            </a>
+            <div className="page-header-brand-text">
+              <a href="#/" className="page-header-title">CollaborativeApp</a>
+              <span className="page-header-current">Notifications</span>
+            </div>
           </div>
           <nav className="page-header-nav">
-            <a href="#/" className="btn btn-ghost btn-sm">Home</a>
+            <a href="#/dashboard" className="btn btn-ghost btn-sm">Dashboard</a>
             <a href="#/browse" className="btn btn-ghost btn-sm">Browse Rooms</a>
             <a href="#/create" className="btn btn-primary btn-sm">Create Room</a>
+            <a href="#/friends" className="btn btn-ghost btn-sm">Friends</a>
+            <a href="#/messages" className="btn btn-ghost btn-sm">Messages</a>
+            <a href="#/calendar" className="btn btn-ghost btn-sm">Calendar</a>
             <ThemeToggle />
             <a href="#/profile" className="btn btn-ghost btn-sm">Profile</a>
+            <a href="#/settings" className="btn btn-ghost btn-sm">Settings</a>
           </nav>
         </header>
 
@@ -228,12 +317,22 @@ export default function Notifications() {
               >
                 Messages
               </button>
+              <button
+                className={`filter-btn ${filter === 'group_chats' ? 'filter-btn-active' : ''}`}
+                onClick={() => setFilter('group_chats')}
+              >
+                Group Chats
+              </button>
             </div>
 
             <div className="notifications-list">
-              {filteredNotifications.length === 0 ? (
+              {notificationsLoading ? (
+                <div className="loading-state-enhanced">Loading notifications...</div>
+              ) : filteredNotifications.length === 0 ? (
                 <div className="notifications-empty">
-                  <div className="notifications-empty-icon">🔔</div>
+                  <div className="notifications-empty-icon">
+                    <Bell size={64} />
+                  </div>
                   <h3>No notifications</h3>
                   <p>You're all caught up!</p>
                 </div>
@@ -252,7 +351,7 @@ export default function Notifications() {
                         <span className="notification-time">{notif.time}</span>
                       </div>
                       <p className="notification-message">{notif.message}</p>
-                      {notif.actions.length > 0 && (
+                      {notif.actions && notif.actions.length > 0 && (
                         <div className="notification-actions">
                           {notif.actions.map(action => (
                             <button
@@ -276,7 +375,7 @@ export default function Notifications() {
                           onClick={() => handleMarkAsRead(notif.id)}
                           title="Mark as read"
                         >
-                          ✓
+                          <Check size={16} />
                         </button>
                       )}
                       <button
@@ -284,7 +383,7 @@ export default function Notifications() {
                         onClick={() => handleDelete(notif.id)}
                         title="Delete"
                       >
-                        ✕
+                        <X size={16} />
                       </button>
                     </div>
                   </div>
@@ -297,6 +396,11 @@ export default function Notifications() {
 
       <footer className="page-footer">
         <p>© {new Date().getFullYear()} CollaborativeApp — Built for students</p>
+        <div className="page-footer-links">
+          <a href="#/privacy">Privacy Policy</a>
+          <a href="#/terms">Terms of Service</a>
+          <a href="#/about">About</a>
+        </div>
       </footer>
     </div>
     </ProtectedRoute>

@@ -20,6 +20,8 @@ import Whiteboard from '../pages/Whiteboard'
 import Timer from '../pages/Timer'
 import Friends from '../pages/Friends'
 import AuthCallback from '../pages/AuthCallback'
+import Privacy from '../pages/Privacy'
+import Terms from '../pages/Terms'
 
 function getPath() {
   const hash = window.location.hash || '#/'
@@ -58,6 +60,8 @@ export default function HashRouter() {
   if (path.startsWith('/whiteboard')) return <Whiteboard />
   if (path.startsWith('/timer')) return <Timer />
   if (path.startsWith('/friends')) return <Friends />
+  if (path.startsWith('/privacy')) return <Privacy />
+  if (path.startsWith('/terms')) return <Terms />
 
   return (
     <div style={{padding:40}}>

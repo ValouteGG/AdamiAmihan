@@ -687,6 +687,59 @@ const deleteRoom = async (req, res) => {
 };
 
 /**
+ * Clear user's recent activity
+ */
+const clearUserActivity = async (req, res) => {
+  try {
+    // Get auth token from header
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized - No token provided' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Get user using the token
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      return res.status(401).json({ error: 'Unauthorized - Invalid token' });
+    }
+
+    const db = supabase.getAuthenticatedClient(token);
+
+    // Delete all activities for the current user
+    let deleteError;
+    try {
+      const result = await db
+        .from('activities')
+        .delete()
+        .eq('user_id', user.id);
+      deleteError = result.error;
+    } catch (e) {
+      deleteError = e;
+    }
+
+    // If RLS fails, try with default client
+    if (deleteError) {
+      console.log('RLS error in clearUserActivity, trying default client:', deleteError.message);
+      const fallbackResult = await supabase
+        .from('activities')
+        .delete()
+        .eq('user_id', user.id);
+      deleteError = fallbackResult.error;
+    }
+
+    if (deleteError) throw deleteError;
+
+    res.json({ message: 'Activity cleared successfully' });
+  } catch (error) {
+    console.error('Error clearing activity:', error);
+    res.status(500).json({ error: 'Failed to clear activity' });
+  }
+};
+
+/**
  * Get room participants
  */
 const getRoomParticipants = async (req, res) => {
@@ -1399,5 +1452,6 @@ module.exports = {
   getRoomMessages,
   sendRoomMessage,
   createSchedule,
-  getRoomSchedules
+  getRoomSchedules,
+  clearUserActivity
 };
